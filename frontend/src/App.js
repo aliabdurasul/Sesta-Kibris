@@ -1,54 +1,85 @@
-import { useEffect } from "react";
+import React from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { Toaster } from "@/components/ui/sonner";
+import { GapGelProvider } from "@/store/GapGelContext";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import MobileShell from "@/layouts/MobileShell";
+import DesktopShell from "@/layouts/DesktopShell";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+import CustomerHome from "@/pages/customer/Home";
+import CustomerMerchant from "@/pages/customer/MerchantPage";
+import CustomerCart from "@/pages/customer/Cart";
+import CustomerOrders from "@/pages/customer/Orders";
+import CustomerOrderDetail from "@/pages/customer/OrderDetail";
+import CustomerProfile from "@/pages/customer/Profile";
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+import MerchantDashboard from "@/pages/merchant/Dashboard";
 
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+import CourierDeliveries from "@/pages/courier/Deliveries";
+import CourierHistory from "@/pages/courier/History";
+import CourierProfile from "@/pages/courier/Profile";
 
-function App() {
+import AdminDashboard from "@/pages/admin/Dashboard";
+
+export default function App() {
   return (
     <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <GapGelProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Navigate to="/customer" replace />} />
+
+            {/* Customer - mobile shell */}
+            <Route element={<MobileShell variant="customer" />}>
+              <Route path="/customer" element={<CustomerHome />} />
+              <Route
+                path="/customer/merchant/:id"
+                element={<CustomerMerchant />}
+              />
+              <Route path="/customer/cart" element={<CustomerCart />} />
+              <Route path="/customer/orders" element={<CustomerOrders />} />
+              <Route
+                path="/customer/orders/:id"
+                element={<CustomerOrderDetail />}
+              />
+              <Route path="/customer/profile" element={<CustomerProfile />} />
+            </Route>
+
+            {/* Courier - mobile shell */}
+            <Route element={<MobileShell variant="courier" />}>
+              <Route path="/courier" element={<CourierDeliveries />} />
+              <Route path="/courier/history" element={<CourierHistory />} />
+              <Route path="/courier/profile" element={<CourierProfile />} />
+            </Route>
+
+            {/* Merchant & Admin - desktop shell */}
+            <Route element={<DesktopShell />}>
+              <Route path="/merchant" element={<MerchantDashboard />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/customer" replace />} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster
+          position="top-center"
+          richColors
+          closeButton
+          theme="light"
+          toastOptions={{
+            classNames: {
+              toast:
+                "rounded-2xl border border-[#E5E7EB] shadow-lg bg-white text-[#1A1A1A] font-semibold",
+            },
+          }}
+        />
+      </GapGelProvider>
     </div>
   );
 }
-
-export default App;
