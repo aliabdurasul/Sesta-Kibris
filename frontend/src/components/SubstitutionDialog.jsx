@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,9 @@ export default function SubstitutionDialog({ open, onOpenChange, onSend }) {
             <MessageSquareWarning className="h-4 w-4 text-amber-500" />
             Suggest a substitution
           </DialogTitle>
+          <DialogDescription>
+            Customer will see this suggestion and can accept or decline.
+          </DialogDescription>
         </DialogHeader>
         <p className="text-xs text-gray-500">
           Customer will see this suggestion in their order page and can accept or

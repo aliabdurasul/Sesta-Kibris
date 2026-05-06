@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -276,6 +277,9 @@ export default function MerchantCatalog() {
             <DialogTitle className="flex items-center gap-2">
               <Upload className="h-4 w-4" /> Bulk import products
             </DialogTitle>
+            <DialogDescription>
+              Add many products at once via CSV paste or file upload.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-gray-500">

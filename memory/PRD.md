@@ -1,57 +1,76 @@
 # GapGel — Hyperlocal Marketplace + Logistics OS
 
 ## Problem Statement (verbatim)
-Build a complete multi-role frontend application. GapGel is a hyperlocal marketplace + logistics operating system. It must support Customers, Merchants, Couriers, and Admin. This is NOT a simple UI demo — it must simulate a real working system with full order lifecycle.
-
-Order state machine: `created → paid → accepted → preparing → ready → out_for_delivery → delivered`
-
-Style: Uber Eats + Getir inspired, clean, minimal, modern, mobile-first. Colors: Primary #6C3BFF, Accent #00C2A8, Bg #F7F7FB.
+Build a complete multi-role frontend application. GapGel is a hyperlocal marketplace + logistics operating system. It must support Customers, Merchants, Couriers, and Admin. Full order lifecycle: `created → paid → accepted → preparing → ready → out_for_delivery → delivered`. Mobile-first, Uber Eats + Getir inspired. Pure frontend, in-memory state.
 
 ## Architecture
-- **Pure frontend**, in-memory React state (Context + useReducer). No backend.
-- Pre-seeded demo data: 3 merchants (Fresh Market / Aqua Express / GasGo), 3 couriers, 1 customer.
-- Route layout:
-  - Customer / Courier → mobile shell (max-w-md) + bottom nav
-  - Merchant → desktop tabs
-  - Admin → desktop sidebar + table
-- Top-bar `RoleSwitcher` always visible to switch between all 4 roles instantly.
+- Pure React + Context + useReducer global store
+- Pre-seeded: 3 merchants (Fresh Market market / Aqua Express water / GasGo gas), 3 couriers, 1 customer
+- Top-bar role switcher; mobile shell for Customer/Courier; desktop sidebar/tabs for Admin/Merchant
+- Auto-timers (useEffect): 30s auto-cancel for unaccepted paid orders, 15s reassign for unpicked-up courier orders
+- Constants: `COURIER_FEE_PER_DELIVERY=$2`, `DELIVERY_FEE=$1.50`, `AUTO_CANCEL_MS=30000`, `REASSIGN_MS=15000`
 
 ## User Personas
-- **Customer (Demo User u1)** — browses merchants, adds to cart, pays, tracks order.
-- **Merchant (Fresh Market / Aqua Express / GasGo)** — accepts/rejects, prepares, marks ready; water/gas merchants self-deliver.
-- **Courier (Ali / Maya / Ravi)** — auto-assigned on merchant Ready, picks up, delivers.
-- **Admin** — "control tower": sees all orders, filters by status, force-assigns couriers, forces status.
+- Customer (u1) — orders, pays, tracks, rates
+- Merchant (Fresh Market / Aqua Express / GasGo) — accepts/rejects, prepares, dispatches; water/gas self-deliver. Manages catalog with bulk CSV.
+- Courier (Ali / Maya / Ravi) — auto-assigned, OTP-verified deliveries, sees earnings
+- Admin — control tower: live orders table, force overrides, force-assign, partial refunds, CSV export, revenue chart, merchant confirmation rate
 
-## Core Requirements (static)
-- Strict linear state-machine guard (only admin can override).
-- Payment gate: merchant cannot accept unless order is `paid`.
-- Courier availability: `idle / busy`. Only idle couriers are auto-assigned; they become busy on assignment and idle on delivery.
-- Self-delivery rule: `water` / `gas` merchants bypass courier and self-deliver.
-- Role-based order visibility enforced at store level (customer sees own; merchant sees own store; courier sees assigned; admin sees all).
-- Cart badge, empty states, toast on new paid order, tap pulse animation on courier actions.
+## Core Requirements
+- Strict linear state-machine guard; only admin can override
+- Payment gate: merchants cannot accept unless `paid`
+- Courier `idle/busy` state; only idle couriers auto-assigned
+- Self-delivery rule for `water` / `gas` merchants (no courier)
+- Role-based order visibility
+- 4-digit OTP at delivery, non-skippable for couriers
+- Auto-cancel after 30s if merchant unresponsive (refund full)
+- 15s courier abandonment auto-reassign to next idle
+- Tap-to-call (`tel:`) for merchant→customer and courier→customer
+- Substitution flow: merchant offers, customer accepts/declines
+- Partial refund (admin), updates totals everywhere
+- Confirmation-rate metric per merchant
 
 ## What's been implemented (2026-02-06)
-- [x] Global state store with strict state machine + reducer
-- [x] Role switcher with merchant/courier account selectors
-- [x] Customer: Home (search, chips, featured, merchant list), Merchant page (quick-add products), Cart (Pay Now), Orders list, Order detail with 7-step Timeline, Profile
-- [x] Merchant: tabbed dashboard (New / Preparing / Ready) with Accept / Reject / Mark Preparing / Mark Ready / Self-dispatch / Self-deliver
-- [x] Courier: delivery list with pickup/dropoff addresses and Picked Up / Delivered buttons
-- [x] Admin: sidebar + live orders table with status filter, force status override, force courier assign, metric cards
-- [x] Auto-dispatch on Ready with toast, water/gas self-delivery branch
-- [x] Deterministic SVG gradient product tiles (reliable, no network)
-- [x] 100% testing agent pass (19/19 flows)
+**Iteration 1**
+- Customer Home (search/chips/featured/merchants), Merchant page (quick-add), Cart (Pay Now), Orders, OrderDetail with Timeline, Profile
+- Merchant tabs (New / Preparing / Ready) with Accept/Reject/Mark Preparing/Mark Ready/Self-dispatch/Self-deliver
+- Courier deliveries with Pickup / Delivered, history, profile
+- Admin sidebar, live orders table, status filter, force override, force assign, metric cards
+- Auto-dispatch with toast, water/gas self-delivery branch, deterministic SVG product tiles
+- Testing: 19/19 flows pass
+
+**Iteration 2 (this iteration)**
+- ⭐ **Customer rating flow**: per-order, merchant + courier stars + comments (`/customer/orders/:id/rate`)
+- 💰 **Courier earnings widget**: today / week / lifetime ($2/delivery)
+- 📊 **Admin revenue chart**: 7-day BarChart (recharts) of revenue + orders
+- 📥 **Admin CSV export**: downloads full orders ledger
+- 📦 **Merchant catalog tab**: add/edit/delete + **bulk CSV** paste/upload (handles 1000s)
+- 🔐 **OTP at delivery**: 4-digit code shown on customer page, courier-side gated dialog
+- 📞 **Tap-to-call**: `tel:` links on merchant + courier order cards
+- 🔁 **Substitution flow**: merchant offers, customer accepts/declines
+- 💸 **Admin partial refund** dialog (and refund column in table)
+- ⏱ **Auto-cancel** unaccepted paid orders after 30s with full refund + toast
+- 🛵 **Courier reassign** if no pickup in 15s; previous courier freed, next idle assigned
+- 📈 **Merchant confirmation-rate** widget on admin (red bar if <70%)
+- 🛑 **Cancelled state** added to state machine + StatusBadge + OrderTimeline banner
+- Testing: 11/13 features automation-verified, 2 timer-based features static-reviewed
+
+## Known Notes
+- All state in-memory; refresh wipes data (intentional for demo)
+- Auto-timers use `Date.now() − createdAt/assignedAt` so they survive re-renders (won't restart from zero on every tick)
+- `merchantReject` now cancels the order with full refund (was: revert to created)
 
 ## Prioritized Backlog
-### P1 (next)
-- Persistence (localStorage) so demo state survives refresh
-- Order history export (CSV) in Admin
-- "Nearby" geo filter stub (distance radius chip) for a realistic merchant list
+### P1
+- localStorage hydration so demo survives refresh
+- Per-merchant view of own ratings
+- Customer reorder button on past delivered orders
 ### P2
-- Customer rating after delivery
-- Courier earnings widget on profile
-- Merchant revenue chart (recharts)
-- Multi-customer demo support
+- Multi-customer demo accounts
+- Image upload for catalog products (currently auto-generated SVG tiles)
+- Geofenced merchant filter
 
 ## Next Tasks
-- Gather user feedback and iterate on any design tweaks
-- Potential enhancement (revenue-oriented): add a tiny "Promoted" tag + upsell banner slot for merchants to self-promote inside Customer home — a natural monetization surface for a hyperlocal OS.
+- Optional: localStorage persistence
+- Optional: merchant onboarding wizard with bulk-CSV starter template
+- Iterate on user feedback

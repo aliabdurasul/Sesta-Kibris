@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,9 @@ export default function RefundDialog({ order, open, onOpenChange, onApply }) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Partial refund · {order.id}</DialogTitle>
+          <DialogDescription>
+            Refund part or all of this order to the customer.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-xl bg-[#F7F7FB] p-3 text-xs text-gray-600">
