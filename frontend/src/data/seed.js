@@ -17,8 +17,30 @@ export const EMPTY_IMAGES = {
     "https://images.unsplash.com/photo-1770927423939-bae721171237?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwxfHxkZWxpdmVyeSUyMGNvdXJpZXIlMjBzY29vdGVyfGVufDB8fHx8MTc3ODA5NTk5Nnww&ixlib=rb-4.1.0&q=85",
 };
 
-const productImg = (q) =>
-  `https://source.unsplash.com/featured/400x400?${encodeURIComponent(q)}`;
+// Reliable, deterministic SVG gradient tile (no network call, never broken).
+function productImg(label, hue = 258) {
+  const h2 = (hue + 40) % 360;
+  const initials = label
+    .replace(/\(.*\)/g, "")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
+    <defs>
+      <linearGradient id='g' x1='0' x2='1' y1='0' y2='1'>
+        <stop offset='0' stop-color='hsl(${hue},85%,88%)'/>
+        <stop offset='1' stop-color='hsl(${h2},75%,72%)'/>
+      </linearGradient>
+    </defs>
+    <rect width='200' height='200' fill='url(#g)'/>
+    <circle cx='100' cy='92' r='46' fill='white' fill-opacity='0.55'/>
+    <text x='100' y='104' font-family='Plus Jakarta Sans, sans-serif' font-size='44' font-weight='800' fill='hsl(${hue},70%,28%)' text-anchor='middle'>${initials}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
 
 export const seedMerchants = [
   {
@@ -35,37 +57,37 @@ export const seedMerchants = [
         id: "p-m1-1",
         name: "Red Apples (1kg)",
         price: 3.5,
-        image: productImg("red apples"),
+        image: productImg("Red Apples", 10),
       },
       {
         id: "p-m1-2",
         name: "Fresh Milk (1L)",
         price: 2.2,
-        image: productImg("milk bottle"),
+        image: productImg("Fresh Milk", 200),
       },
       {
         id: "p-m1-3",
         name: "Sourdough Bread",
         price: 4.0,
-        image: productImg("sourdough bread"),
+        image: productImg("Sourdough", 32),
       },
       {
         id: "p-m1-4",
         name: "Free-Range Eggs (x12)",
         price: 5.5,
-        image: productImg("fresh eggs"),
+        image: productImg("Eggs", 45),
       },
       {
         id: "p-m1-5",
         name: "Ripe Bananas (1kg)",
         price: 1.8,
-        image: productImg("bananas"),
+        image: productImg("Bananas", 50),
       },
       {
         id: "p-m1-6",
         name: "Tomatoes (1kg)",
         price: 2.6,
-        image: productImg("tomatoes"),
+        image: productImg("Tomatoes", 0),
       },
     ],
     featured: true,
@@ -84,25 +106,25 @@ export const seedMerchants = [
         id: "p-m2-1",
         name: "5L Still Water",
         price: 2.0,
-        image: productImg("water bottle 5 liters"),
+        image: productImg("5L Water", 200),
       },
       {
         id: "p-m2-2",
         name: "10L Still Water",
         price: 3.5,
-        image: productImg("water gallon"),
+        image: productImg("10L Water", 210),
       },
       {
         id: "p-m2-3",
         name: "19L Dispenser",
         price: 8.0,
-        image: productImg("water dispenser"),
+        image: productImg("19L Dispenser", 220),
       },
       {
         id: "p-m2-4",
         name: "Sparkling 1.5L",
         price: 1.5,
-        image: productImg("sparkling water"),
+        image: productImg("Sparkling", 190),
       },
     ],
     featured: true,
@@ -121,25 +143,25 @@ export const seedMerchants = [
         id: "p-m3-1",
         name: "Small Tank (5kg)",
         price: 15,
-        image: productImg("gas cylinder small"),
+        image: productImg("Small Tank", 20),
       },
       {
         id: "p-m3-2",
         name: "Medium Tank (12kg)",
         price: 25,
-        image: productImg("gas cylinder"),
+        image: productImg("Medium Tank", 30),
       },
       {
         id: "p-m3-3",
         name: "Large Tank (25kg)",
         price: 40,
-        image: productImg("large gas tank"),
+        image: productImg("Large Tank", 15),
       },
       {
         id: "p-m3-4",
         name: "Refill Service",
         price: 10,
-        image: productImg("propane refill"),
+        image: productImg("Refill", 40),
       },
     ],
     featured: false,
