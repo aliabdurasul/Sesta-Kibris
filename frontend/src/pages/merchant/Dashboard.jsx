@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useGapGel } from "@/store/GapGelContext";
 import {
   Tabs,
@@ -15,11 +15,17 @@ import {
   DollarSign,
   Bike,
   Truck,
+  Phone,
+  MessageSquareWarning,
+  Layers,
+  TrendingUp,
 } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { isSelfDeliveryMerchant } from "@/lib/orderMachine";
+import MerchantCatalog from "@/pages/merchant/Catalog";
+import SubstitutionDialog from "@/components/SubstitutionDialog";
 
-function OrderCard({ order, merchant, actions }) {
+function OrderCard({ order, merchant, customer, onCallCustomer, onSuggestSwap, actions }) {
   return (
     <div
       className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm"
@@ -27,7 +33,7 @@ function OrderCard({ order, merchant, actions }) {
     >
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-xs text-gray-500">Order</div>
+          <div className="text-xs text-gray-500">Order · {customer?.name}</div>
           <div className="text-base font-extrabold">{order.id}</div>
         </div>
         <StatusBadge status={order.status} />
@@ -46,6 +52,16 @@ function OrderCard({ order, merchant, actions }) {
           </li>
         ))}
       </ul>
+      {order.substitution && (
+        <div className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] font-semibold text-amber-800">
+          Substitution: "{order.substitution.message}"{" "}
+          {order.substitution.accepted == null
+            ? "(awaiting customer)"
+            : order.substitution.accepted
+              ? "✓ accepted"
+              : "✗ declined"}
+        </div>
+      )}
       <div className="mt-3 flex items-center justify-between border-t border-dashed border-gray-200 pt-3 text-sm">
         <span className="text-gray-500">Total</span>
         <span className="text-lg font-extrabold">
@@ -59,6 +75,28 @@ function OrderCard({ order, merchant, actions }) {
             : "Dispatched via courier network"}
         </div>
       )}
+      {customer && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <a
+            href={`tel:${customer.phone}`}
+            className="tap inline-flex items-center gap-1 rounded-full bg-[#00C2A8]/10 px-3 py-1 font-semibold text-[#00A38D] hover:bg-[#00C2A8]/20"
+            data-testid={`merchant-call-${order.id}`}
+          >
+            <Phone className="h-3 w-3" />
+            Call customer
+          </a>
+          {onSuggestSwap && !["delivered", "cancelled"].includes(order.status) && (
+            <button
+              onClick={onSuggestSwap}
+              className="tap inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-700 hover:bg-amber-200"
+              data-testid={`merchant-suggest-${order.id}`}
+            >
+              <MessageSquareWarning className="h-3 w-3" />
+              Suggest swap
+            </button>
+          )}
+        </div>
+      )}
       <div className="mt-4 flex flex-wrap gap-2">{actions}</div>
     </div>
   );
@@ -69,16 +107,21 @@ export default function MerchantDashboard() {
     state,
     visibleOrders,
     findMerchant,
+    findCustomer,
     merchantAccept,
     merchantReject,
     merchantStartPreparing,
     merchantMarkReady,
     merchantSelfDispatch,
     merchantSelfDeliver,
+    offerSubstitution,
+    merchantConfirmationRate,
   } = useGapGel();
 
   const merchant = findMerchant(state.currentMerchantId);
   const selfDelivery = isSelfDeliveryMerchant(merchant);
+  const [subOrderId, setSubOrderId] = useState(null);
+  const confRate = merchantConfirmationRate(merchant?.id);
 
   const buckets = useMemo(() => {
     const newOnes = visibleOrders.filter(
@@ -101,7 +144,7 @@ export default function MerchantDashboard() {
       total: visibleOrders.length,
       revenue: visibleOrders
         .filter((o) => o.status === "delivered")
-        .reduce((a, b) => a + b.total, 0)
+        .reduce((a, b) => a + b.total - (b.refund?.amount || 0), 0)
         .toFixed(2),
       inFlight: visibleOrders.filter(
         (o) =>
@@ -128,7 +171,7 @@ export default function MerchantDashboard() {
             {merchant?.tagline} · {merchant?.address}
           </p>
         </div>
-        <div className="grid grid-cols-3 gap-2 md:w-[420px]">
+        <div className="grid grid-cols-2 gap-2 md:w-[520px] md:grid-cols-4">
           <Metric
             icon={Package}
             label="Orders"
@@ -146,6 +189,12 @@ export default function MerchantDashboard() {
             label="Revenue"
             value={`$${metrics.revenue}`}
             color="#1A1A1A"
+          />
+          <Metric
+            icon={TrendingUp}
+            label="Confirm rate"
+            value={confRate.rate == null ? "—" : `${confRate.rate}%`}
+            color="#FF3B30"
           />
         </div>
       </div>
@@ -173,6 +222,14 @@ export default function MerchantDashboard() {
           >
             Ready ({buckets.ready.length})
           </TabsTrigger>
+          <TabsTrigger
+            value="catalog"
+            className="rounded-full px-5 data-[state=active]:bg-[#6C3BFF] data-[state=active]:text-white"
+            data-testid="tab-catalog"
+          >
+            <Layers className="mr-1.5 h-3.5 w-3.5" />
+            Catalog ({merchant?.products.length || 0})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="new" className="mt-5">
@@ -183,6 +240,7 @@ export default function MerchantDashboard() {
                 key={o.id}
                 order={o}
                 merchant={merchant}
+                customer={findCustomer(o.customerId)}
                 actions={
                   o.status === "created" ? (
                     <div className="text-xs font-semibold text-amber-600">
@@ -223,6 +281,8 @@ export default function MerchantDashboard() {
                 key={o.id}
                 order={o}
                 merchant={merchant}
+                customer={findCustomer(o.customerId)}
+                onSuggestSwap={() => setSubOrderId(o.id)}
                 actions={
                   o.status === "accepted" ? (
                     <Button
@@ -255,6 +315,7 @@ export default function MerchantDashboard() {
                 key={o.id}
                 order={o}
                 merchant={merchant}
+                customer={findCustomer(o.customerId)}
                 actions={
                   selfDelivery ? (
                     o.status === "ready" ? (
@@ -290,7 +351,17 @@ export default function MerchantDashboard() {
             ))}
           </Grid>
         </TabsContent>
+
+        <TabsContent value="catalog" className="mt-2">
+          <MerchantCatalog />
+        </TabsContent>
       </Tabs>
+
+      <SubstitutionDialog
+        open={!!subOrderId}
+        onOpenChange={(o) => !o && setSubOrderId(null)}
+        onSend={(msg) => offerSubstitution(subOrderId, msg)}
+      />
     </div>
   );
 }

@@ -4,6 +4,8 @@ import React, {
   useReducer,
   useMemo,
   useCallback,
+  useEffect,
+  useRef,
 } from "react";
 import { toast } from "sonner";
 import {
@@ -11,6 +13,9 @@ import {
   seedCouriers,
   seedCustomers,
   DELIVERY_FEE,
+  COURIER_FEE_PER_DELIVERY,
+  AUTO_CANCEL_MS,
+  REASSIGN_MS,
 } from "@/data/seed";
 import {
   canTransition,
@@ -81,6 +86,7 @@ function reducer(state, action) {
 
     case "ORDER_CREATE": {
       const id = `GG-${state.orderSeq + 1}`;
+      const otp = String(Math.floor(1000 + Math.random() * 9000));
       const order = {
         id,
         status: "created",
@@ -92,6 +98,14 @@ function reducer(state, action) {
         merchantId: action.merchantId,
         courierId: null,
         selfDelivery: action.selfDelivery,
+        otp,
+        otpVerified: false,
+        rating: null,
+        refund: null,
+        substitution: null,
+        acceptedAt: null,
+        assignedAt: null,
+        cancelReason: null,
         createdAt: new Date().toISOString(),
         history: [{ status: "created", at: new Date().toISOString() }],
       };
@@ -108,11 +122,14 @@ function reducer(state, action) {
       const orders = state.orders.map((o) => {
         if (o.id !== orderId) return o;
         if (!canTransition(o.status, to)) return o;
-        return {
+        const next = {
           ...o,
           status: to,
           history: [...o.history, { status: to, at: new Date().toISOString() }],
         };
+        if (to === "accepted") next.acceptedAt = new Date().toISOString();
+        if (to === "delivered") next.deliveredAt = new Date().toISOString();
+        return next;
       });
       return { ...state, orders };
     }
@@ -120,7 +137,9 @@ function reducer(state, action) {
     case "ORDER_ASSIGN_COURIER": {
       const { orderId, courierId } = action;
       const orders = state.orders.map((o) =>
-        o.id === orderId ? { ...o, courierId } : o,
+        o.id === orderId
+          ? { ...o, courierId, assignedAt: new Date().toISOString() }
+          : o,
       );
       const couriers = state.couriers.map((c) =>
         c.id === courierId ? { ...c, status: "busy" } : c,
@@ -171,6 +190,151 @@ function reducer(state, action) {
         o.id === orderId ? { ...o, courierId: courierId || null } : o,
       );
       return { ...state, orders, couriers };
+    }
+
+    case "ORDER_CANCEL": {
+      const { orderId, reason } = action;
+      const order = state.orders.find((o) => o.id === orderId);
+      if (!order || order.status === "delivered" || order.status === "cancelled")
+        return state;
+      const orders = state.orders.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              status: "cancelled",
+              cancelReason: reason || "cancelled",
+              refund: { amount: o.total, note: reason || "cancelled", at: new Date().toISOString() },
+              history: [
+                ...o.history,
+                { status: "cancelled", at: new Date().toISOString(), reason },
+              ],
+            }
+          : o,
+      );
+      // Free courier if assigned
+      let couriers = state.couriers;
+      if (order.courierId) {
+        couriers = couriers.map((c) =>
+          c.id === order.courierId ? { ...c, status: "idle" } : c,
+        );
+      }
+      return { ...state, orders, couriers };
+    }
+
+    case "ORDER_REASSIGN": {
+      const { orderId, fromCourierId, toCourierId } = action;
+      const orders = state.orders.map((o) =>
+        o.id === orderId
+          ? { ...o, courierId: toCourierId, assignedAt: new Date().toISOString() }
+          : o,
+      );
+      const couriers = state.couriers.map((c) => {
+        if (c.id === fromCourierId) return { ...c, status: "idle" };
+        if (c.id === toCourierId) return { ...c, status: "busy" };
+        return c;
+      });
+      return { ...state, orders, couriers };
+    }
+
+    case "SUBMIT_RATING": {
+      const { orderId, rating } = action;
+      const orders = state.orders.map((o) =>
+        o.id === orderId
+          ? { ...o, rating: { ...rating, at: new Date().toISOString() } }
+          : o,
+      );
+      return { ...state, orders };
+    }
+
+    case "OFFER_SUBSTITUTION": {
+      const { orderId, message } = action;
+      const orders = state.orders.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              substitution: { message, accepted: null, at: new Date().toISOString() },
+            }
+          : o,
+      );
+      return { ...state, orders };
+    }
+
+    case "RESPOND_SUBSTITUTION": {
+      const { orderId, accepted } = action;
+      const orders = state.orders.map((o) =>
+        o.id === orderId
+          ? { ...o, substitution: { ...o.substitution, accepted, respondedAt: new Date().toISOString() } }
+          : o,
+      );
+      return { ...state, orders };
+    }
+
+    case "APPLY_REFUND": {
+      const { orderId, amount, note } = action;
+      const orders = state.orders.map((o) => {
+        if (o.id !== orderId) return o;
+        const prev = o.refund?.amount || 0;
+        return {
+          ...o,
+          refund: {
+            amount: +(prev + amount).toFixed(2),
+            note: note || o.refund?.note || "",
+            at: new Date().toISOString(),
+          },
+        };
+      });
+      return { ...state, orders };
+    }
+
+    case "VERIFY_OTP": {
+      const { orderId } = action;
+      const orders = state.orders.map((o) =>
+        o.id === orderId ? { ...o, otpVerified: true } : o,
+      );
+      return { ...state, orders };
+    }
+
+    case "ADD_PRODUCT": {
+      const { merchantId, product } = action;
+      const merchants = state.merchants.map((m) =>
+        m.id === merchantId ? { ...m, products: [...m.products, product] } : m,
+      );
+      return { ...state, merchants };
+    }
+
+    case "UPDATE_PRODUCT": {
+      const { merchantId, productId, patch } = action;
+      const merchants = state.merchants.map((m) =>
+        m.id === merchantId
+          ? {
+              ...m,
+              products: m.products.map((p) =>
+                p.id === productId ? { ...p, ...patch } : p,
+              ),
+            }
+          : m,
+      );
+      return { ...state, merchants };
+    }
+
+    case "DELETE_PRODUCT": {
+      const { merchantId, productId } = action;
+      const merchants = state.merchants.map((m) =>
+        m.id === merchantId
+          ? { ...m, products: m.products.filter((p) => p.id !== productId) }
+          : m,
+      );
+      return { ...state, merchants };
+    }
+
+    case "BULK_ADD_PRODUCTS": {
+      const { merchantId, products } = action;
+      const merchants = state.merchants.map((m) =>
+        m.id === merchantId
+          ? { ...m, products: [...m.products, ...products] }
+          : m,
+      );
+      return { ...state, merchants };
     }
 
     default:
@@ -269,13 +433,12 @@ export function GapGelProvider({ children }) {
     dispatch({ type: "ORDER_TRANSITION", orderId, to: "accepted" });
   };
   const merchantReject = (orderId) => {
-    // Reject → revert to created (not in linear chain; admin-style override downgrade, kept demo-simple)
     dispatch({
-      type: "ADMIN_FORCE_STATUS",
+      type: "ORDER_CANCEL",
       orderId,
-      to: "created",
+      reason: "rejected by merchant",
     });
-    toast.error("Order rejected by merchant");
+    toast.error("Order rejected — refund issued");
   };
   const merchantStartPreparing = (orderId) =>
     dispatch({ type: "ORDER_TRANSITION", orderId, to: "preparing" });
@@ -310,10 +473,18 @@ export function GapGelProvider({ children }) {
   const courierDeliver = (orderId) => {
     const order = state.orders.find((o) => o.id === orderId);
     if (!order) return;
+    if (!order.otpVerified) {
+      toast.error("Verify the customer OTP first");
+      return;
+    }
     dispatch({ type: "ORDER_TRANSITION", orderId, to: "delivered" });
     if (order.courierId) {
       dispatch({ type: "COURIER_FREE", courierId: order.courierId });
     }
+  };
+
+  const verifyOtp = (orderId) => {
+    dispatch({ type: "VERIFY_OTP", orderId });
   };
 
   // Merchant self-delivery handlers (water/gas)
@@ -339,6 +510,204 @@ export function GapGelProvider({ children }) {
       courierId ? "Admin assigned courier" : "Admin cleared courier",
     );
   };
+
+  const adminApplyRefund = (orderId, amount, note) => {
+    dispatch({ type: "APPLY_REFUND", orderId, amount, note });
+    toast.success(`Refunded $${amount.toFixed(2)}`);
+  };
+
+  const cancelOrder = (orderId, reason) => {
+    dispatch({ type: "ORDER_CANCEL", orderId, reason });
+  };
+
+  // Customer / merchant rating + substitution + OTP flow
+  const submitRating = (orderId, rating) =>
+    dispatch({ type: "SUBMIT_RATING", orderId, rating });
+  const offerSubstitution = (orderId, message) => {
+    dispatch({ type: "OFFER_SUBSTITUTION", orderId, message });
+    toast.success("Substitution suggestion sent to customer");
+  };
+  const respondSubstitution = (orderId, accepted) => {
+    dispatch({ type: "RESPOND_SUBSTITUTION", orderId, accepted });
+    toast.success(accepted ? "Substitution accepted" : "Substitution declined");
+  };
+
+  // Product CRUD
+  const _slug = (s) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
+      .slice(0, 24);
+  const _hueFor = (mid) =>
+    ({ m1: 140, m2: 210, m3: 25 }[mid] || Math.floor(Math.random() * 360));
+  const _imgFor = (name, mid) => {
+    const hue = _hueFor(mid);
+    const initials = name
+      .replace(/\(.*\)/g, "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase();
+    const h2 = (hue + 40) % 360;
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0' stop-color='hsl(${hue},85%,88%)'/><stop offset='1' stop-color='hsl(${h2},75%,72%)'/></linearGradient></defs><rect width='200' height='200' fill='url(#g)'/><circle cx='100' cy='92' r='46' fill='white' fill-opacity='0.55'/><text x='100' y='104' font-family='Plus Jakarta Sans, sans-serif' font-size='44' font-weight='800' fill='hsl(${hue},70%,28%)' text-anchor='middle'>${initials}</text></svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  };
+  const addProduct = (merchantId, { name, price, image }) => {
+    const id = `p-${merchantId}-${_slug(name)}-${Date.now().toString(36).slice(-4)}`;
+    dispatch({
+      type: "ADD_PRODUCT",
+      merchantId,
+      product: {
+        id,
+        name,
+        price,
+        image: image || _imgFor(name, merchantId),
+      },
+    });
+  };
+  const updateProduct = (merchantId, productId, patch) =>
+    dispatch({ type: "UPDATE_PRODUCT", merchantId, productId, patch });
+  const deleteProduct = (merchantId, productId) =>
+    dispatch({ type: "DELETE_PRODUCT", merchantId, productId });
+  const bulkAddProducts = (merchantId, rows) => {
+    const products = rows.map((r, idx) => ({
+      id: `p-${merchantId}-${_slug(r.name)}-${Date.now().toString(36)}-${idx}`,
+      name: r.name,
+      price: r.price,
+      image: _imgFor(r.name, merchantId),
+    }));
+    dispatch({ type: "BULK_ADD_PRODUCTS", merchantId, products });
+  };
+
+  // ---- Auto-timers (merchant-accept timeout & courier-abandonment reassign) ----
+  const timersRef = useRef([]);
+  useEffect(() => {
+    // Clear previous timers
+    timersRef.current.forEach((t) => clearTimeout(t));
+    timersRef.current = [];
+
+    state.orders.forEach((o) => {
+      // Auto-cancel paid orders not accepted within window
+      if (o.status === "paid") {
+        const elapsed = Date.now() - new Date(o.createdAt).getTime();
+        const rem = AUTO_CANCEL_MS - elapsed;
+        if (rem <= 0) {
+          dispatch({
+            type: "ORDER_CANCEL",
+            orderId: o.id,
+            reason: "merchant did not respond",
+          });
+          setTimeout(
+            () =>
+              toast.error(
+                `Order ${o.id} auto-cancelled — merchant did not respond`,
+              ),
+            10,
+          );
+        } else {
+          const t = setTimeout(() => {
+            dispatch({
+              type: "ORDER_CANCEL",
+              orderId: o.id,
+              reason: "merchant did not respond",
+            });
+            toast.error(
+              `Order ${o.id} auto-cancelled — merchant did not respond`,
+            );
+          }, rem);
+          timersRef.current.push(t);
+        }
+      }
+      // Reassign if courier doesn't pick up within window
+      if (
+        o.status === "ready" &&
+        o.courierId &&
+        o.assignedAt &&
+        !o.selfDelivery
+      ) {
+        const elapsed = Date.now() - new Date(o.assignedAt).getTime();
+        const rem = REASSIGN_MS - elapsed;
+        const tryReassign = () => {
+          // pick another idle courier different from current
+          const other = state.couriers.find(
+            (c) => c.status === "idle" && c.id !== o.courierId,
+          );
+          if (other) {
+            dispatch({
+              type: "ORDER_REASSIGN",
+              orderId: o.id,
+              fromCourierId: o.courierId,
+              toCourierId: other.id,
+            });
+            toast.warning(`Reassigned ${o.id} → ${other.name} (timeout)`);
+          } else {
+            toast.warning(`No spare courier — ${o.id} still pending`);
+          }
+        };
+        if (rem <= 0) {
+          tryReassign();
+        } else {
+          const t = setTimeout(tryReassign, rem);
+          timersRef.current.push(t);
+        }
+      }
+    });
+
+    return () => {
+      timersRef.current.forEach((t) => clearTimeout(t));
+      timersRef.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.orders, state.couriers]);
+
+  // ---- Earnings & metrics helpers ----
+  const courierEarnings = useCallback(
+    (courierId) => {
+      const delivered = state.orders.filter(
+        (o) => o.courierId === courierId && o.status === "delivered",
+      );
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 6);
+      const todayCount = delivered.filter(
+        (o) => new Date(o.deliveredAt || o.createdAt) >= today,
+      ).length;
+      const weekCount = delivered.filter(
+        (o) => new Date(o.deliveredAt || o.createdAt) >= weekAgo,
+      ).length;
+      return {
+        feePerDelivery: COURIER_FEE_PER_DELIVERY,
+        deliveries: delivered.length,
+        todayDeliveries: todayCount,
+        weekDeliveries: weekCount,
+        today: +(todayCount * COURIER_FEE_PER_DELIVERY).toFixed(2),
+        week: +(weekCount * COURIER_FEE_PER_DELIVERY).toFixed(2),
+        lifetime: +(delivered.length * COURIER_FEE_PER_DELIVERY).toFixed(2),
+      };
+    },
+    [state.orders],
+  );
+
+  const merchantConfirmationRate = useCallback(
+    (merchantId) => {
+      const ms = state.orders.filter((o) => o.merchantId === merchantId);
+      const accepted = ms.filter((o) =>
+        ["accepted", "preparing", "ready", "out_for_delivery", "delivered"].includes(
+          o.status,
+        ),
+      ).length;
+      const decided = ms.filter(
+        (o) => o.status !== "created" && o.status !== "paid",
+      ).length;
+      const rate = decided === 0 ? null : Math.round((accepted / decided) * 100);
+      return { total: ms.length, accepted, decided, rate };
+    },
+    [state.orders],
+  );
 
   // ---- Derived: visible orders per role ----
   const visibleOrders = useMemo(() => {
@@ -395,8 +764,20 @@ export function GapGelProvider({ children }) {
     merchantSelfDeliver,
     courierPickup,
     courierDeliver,
+    verifyOtp,
     adminForceStatus,
     adminForceAssign,
+    adminApplyRefund,
+    cancelOrder,
+    submitRating,
+    offerSubstitution,
+    respondSubstitution,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    bulkAddProducts,
+    courierEarnings,
+    merchantConfirmationRate,
     visibleOrders,
     cartCount,
   };

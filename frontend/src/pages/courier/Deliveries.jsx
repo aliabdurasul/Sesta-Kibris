@@ -2,10 +2,26 @@ import React, { useState } from "react";
 import { useGapGel } from "@/store/GapGelContext";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Bike, MapPin, Package, CheckCircle2, Truck } from "lucide-react";
+import {
+  Bike,
+  MapPin,
+  Package,
+  CheckCircle2,
+  Truck,
+  Phone,
+  ShieldCheck,
+} from "lucide-react";
 import { EMPTY_IMAGES } from "@/data/seed";
+import OtpDialog from "@/components/OtpDialog";
 
-function DeliveryCard({ order, merchant, customer, onPickup, onDeliver }) {
+function DeliveryCard({
+  order,
+  merchant,
+  customer,
+  onPickup,
+  onDeliver,
+  onOpenOtp,
+}) {
   const [pulseId, setPulseId] = useState(null);
   const isReady = order.status === "ready";
   const isOut = order.status === "out_for_delivery";
@@ -62,9 +78,18 @@ function DeliveryCard({ order, merchant, customer, onPickup, onDeliver }) {
         </div>
       </div>
 
-      <div className="mt-3 text-xs font-semibold text-gray-500">
-        {order.items.length} item{order.items.length > 1 ? "s" : ""} · $
-        {order.total.toFixed(2)}
+      <div className="mt-3 flex items-center justify-between text-xs font-semibold text-gray-500">
+        <span>
+          {order.items.length} item{order.items.length > 1 ? "s" : ""} · $
+          {order.total.toFixed(2)}
+        </span>
+        <a
+          href={`tel:${customer?.phone || ""}`}
+          className="tap inline-flex items-center gap-1 rounded-full bg-[#00C2A8]/10 px-3 py-1 text-[#00A38D]"
+          data-testid={`courier-call-${order.id}`}
+        >
+          <Phone className="h-3 w-3" /> Call
+        </a>
       </div>
 
       <div className="mt-4">
@@ -77,15 +102,24 @@ function DeliveryCard({ order, merchant, customer, onPickup, onDeliver }) {
             <Truck className="mr-2 h-4 w-4" /> Picked Up
           </Button>
         )}
-        {isOut && (
-          <Button
-            onClick={() => handle(onDeliver)}
-            className="tap h-12 w-full rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
-            data-testid={`courier-deliver-${order.id}`}
-          >
-            <CheckCircle2 className="mr-2 h-4 w-4" /> Delivered
-          </Button>
-        )}
+        {isOut &&
+          (order.otpVerified ? (
+            <Button
+              onClick={() => handle(onDeliver)}
+              className="tap h-12 w-full rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
+              data-testid={`courier-deliver-${order.id}`}
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Delivered
+            </Button>
+          ) : (
+            <Button
+              onClick={() => onOpenOtp(order.id)}
+              className="tap h-12 w-full rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
+              data-testid={`courier-otp-${order.id}`}
+            >
+              <ShieldCheck className="mr-2 h-4 w-4" /> Enter OTP to deliver
+            </Button>
+          ))}
         {!isReady && !isOut && (
           <div className="text-center text-xs font-semibold text-emerald-600">
             Completed
@@ -105,12 +139,15 @@ export default function CourierDeliveries() {
     findCourier,
     courierPickup,
     courierDeliver,
+    verifyOtp,
   } = useGapGel();
 
   const me = findCourier(state.currentCourierId);
   const active = visibleOrders.filter(
     (o) => o.status === "ready" || o.status === "out_for_delivery",
   );
+  const [otpOrderId, setOtpOrderId] = useState(null);
+  const otpOrder = state.orders.find((o) => o.id === otpOrderId);
 
   return (
     <div className="gg-rise px-4 pb-28 pt-4" data-testid="courier-deliveries">
@@ -151,10 +188,23 @@ export default function CourierDeliveries() {
               customer={findCustomer(o.customerId)}
               onPickup={courierPickup}
               onDeliver={courierDeliver}
+              onOpenOtp={setOtpOrderId}
             />
           ))}
         </div>
       )}
+
+      <OtpDialog
+        open={!!otpOrderId}
+        onOpenChange={(o) => !o && setOtpOrderId(null)}
+        expected={otpOrder?.otp}
+        onVerified={() => {
+          verifyOtp(otpOrderId);
+          setOtpOrderId(null);
+          // Auto-deliver immediately after verification
+          setTimeout(() => courierDeliver(otpOrderId), 80);
+        }}
+      />
     </div>
   );
 }

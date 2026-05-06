@@ -18,6 +18,7 @@ import CustomerCart from "@/pages/customer/Cart";
 import CustomerOrders from "@/pages/customer/Orders";
 import CustomerOrderDetail from "@/pages/customer/OrderDetail";
 import CustomerProfile from "@/pages/customer/Profile";
+import CustomerRate from "@/pages/customer/Rate";
 
 import MerchantDashboard from "@/pages/merchant/Dashboard";
 
@@ -47,6 +48,10 @@ export default function App() {
               <Route
                 path="/customer/orders/:id"
                 element={<CustomerOrderDetail />}
+              />
+              <Route
+                path="/customer/orders/:id/rate"
+                element={<CustomerRate />}
               />
               <Route path="/customer/profile" element={<CustomerProfile />} />
             </Route>

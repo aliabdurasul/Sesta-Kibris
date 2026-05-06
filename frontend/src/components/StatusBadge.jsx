@@ -9,6 +9,7 @@ const STYLES = {
   ready: "bg-purple-100 text-purple-700",
   out_for_delivery: "bg-cyan-100 text-cyan-700",
   delivered: "bg-emerald-100 text-emerald-700",
+  cancelled: "bg-red-100 text-red-700",
 };
 
 export default function StatusBadge({ status }) {

@@ -17,6 +17,7 @@ export const STATE_LABELS = {
   ready: "Ready",
   out_for_delivery: "Out for delivery",
   delivered: "Delivered",
+  cancelled: "Cancelled",
 };
 
 export function stateIndex(s) {
@@ -30,9 +31,16 @@ export function canTransition(from, to) {
   return fi >= 0 && ti >= 0 && ti === fi + 1;
 }
 
-// Admin can override to any state (forward or backward).
+// Admin can override to any state (forward or backward), including 'cancelled'.
 export function canAdminOverride(from, to) {
-  return stateIndex(from) >= 0 && stateIndex(to) >= 0;
+  return (
+    (stateIndex(from) >= 0 || from === "cancelled") &&
+    (stateIndex(to) >= 0 || to === "cancelled")
+  );
+}
+
+export function isTerminal(s) {
+  return s === "delivered" || s === "cancelled";
 }
 
 export const SELF_DELIVERY_TYPES = new Set(["water", "gas"]);

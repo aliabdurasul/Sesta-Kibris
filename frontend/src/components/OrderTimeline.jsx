@@ -2,7 +2,17 @@ import React from "react";
 import { ORDER_STATES, STATE_LABELS, stateIndex } from "@/lib/orderMachine";
 import { Check } from "lucide-react";
 
-export default function OrderTimeline({ status }) {
+export default function OrderTimeline({ status, cancelReason }) {
+  if (status === "cancelled") {
+    return (
+      <div
+        className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"
+        data-testid="order-timeline-cancelled"
+      >
+        Order cancelled{cancelReason ? ` · ${cancelReason}` : ""}
+      </div>
+    );
+  }
   const currentIdx = stateIndex(status);
 
   return (

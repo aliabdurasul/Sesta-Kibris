@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useGapGel } from "@/store/GapGelContext";
 import StatusBadge from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -17,8 +18,32 @@ import {
   Activity,
   Search,
   AlertTriangle,
+  Download,
+  RotateCcw,
 } from "lucide-react";
 import { ORDER_STATES, STATE_LABELS } from "@/lib/orderMachine";
+import RevenueChart from "@/components/RevenueChart";
+import RefundDialog from "@/components/RefundDialog";
+
+function downloadCsv(rows, filename) {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const escape = (v) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = [
+    headers.join(","),
+    ...rows.map((r) => headers.map((h) => escape(r[h])).join(",")),
+  ].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function AdminDashboard() {
   const {
@@ -28,10 +53,14 @@ export default function AdminDashboard() {
     findCustomer,
     adminForceStatus,
     adminForceAssign,
+    adminApplyRefund,
+    merchantConfirmationRate,
   } = useGapGel();
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [refundOrderId, setRefundOrderId] = useState(null);
+  const refundOrder = state.orders.find((o) => o.id === refundOrderId);
 
   const filtered = useMemo(() => {
     return state.orders.filter((o) => {
@@ -46,6 +75,31 @@ export default function AdminDashboard() {
       return matchesStatus && matchesSearch;
     });
   }, [state.orders, statusFilter, search, findMerchant, findCourier]);
+
+  const handleExport = () => {
+    const rows = state.orders.map((o) => ({
+      order_id: o.id,
+      status: o.status,
+      customer: findCustomer(o.customerId)?.name || "",
+      merchant: findMerchant(o.merchantId)?.name || "",
+      merchant_type: findMerchant(o.merchantId)?.type || "",
+      courier: o.courierId ? findCourier(o.courierId)?.name : "",
+      self_delivery: o.selfDelivery ? "yes" : "no",
+      items: o.items.length,
+      subtotal: o.subtotal,
+      delivery_fee: o.deliveryFee,
+      refund: o.refund?.amount || 0,
+      net_total: +(o.total - (o.refund?.amount || 0)).toFixed(2),
+      total: o.total,
+      created_at: o.createdAt,
+      delivered_at: o.deliveredAt || "",
+      cancel_reason: o.cancelReason || "",
+    }));
+    downloadCsv(
+      rows,
+      `gapgel-orders-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+  };
 
   const metrics = useMemo(() => {
     const active = state.orders.filter((o) => o.status !== "delivered").length;
@@ -100,6 +154,13 @@ export default function AdminDashboard() {
               Monitor every order across the hyperlocal network.
             </p>
           </div>
+          <Button
+            onClick={handleExport}
+            className="tap h-11 rounded-full bg-[#1A1A1A] px-5 font-bold text-white hover:bg-black"
+            data-testid="admin-export-csv"
+          >
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
         </div>
 
         {/* Metrics */}
@@ -117,6 +178,49 @@ export default function AdminDashboard() {
             accent="#FF3B30"
             warn={metrics.unassigned > 0}
           />
+        </div>
+
+        {/* Chart + merchant rates */}
+        <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <RevenueChart orders={state.orders} />
+          </div>
+          <div
+            className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm"
+            data-testid="merchant-confirmation-rates"
+          >
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#6C3BFF]">
+              Merchant confirmation rate
+            </div>
+            <div className="space-y-2">
+              {state.merchants.map((m) => {
+                const r = merchantConfirmationRate(m.id);
+                const pct = r.rate == null ? 0 : r.rate;
+                const bad = r.rate != null && r.rate < 70;
+                return (
+                  <div key={m.id} data-testid={`mrate-${m.id}`}>
+                    <div className="flex items-baseline justify-between text-xs">
+                      <span className="font-semibold">{m.name}</span>
+                      <span
+                        className={`font-bold ${bad ? "text-red-600" : "text-[#1A1A1A]"}`}
+                      >
+                        {r.rate == null ? "—" : `${r.rate}%`}
+                      </span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className={`h-full ${bad ? "bg-red-400" : "bg-[#00C2A8]"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-gray-500">
+                      {r.accepted}/{r.decided} decided · {r.total} total
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Filters */}
@@ -165,6 +269,7 @@ export default function AdminDashboard() {
                   <th className="px-4 py-3">Merchant</th>
                   <th className="px-4 py-3">Courier</th>
                   <th className="px-4 py-3">Total</th>
+                  <th className="px-4 py-3">Refund</th>
                   <th className="px-4 py-3 text-right">Controls</th>
                 </tr>
               </thead>
@@ -172,7 +277,7 @@ export default function AdminDashboard() {
                 {filtered.length === 0 && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-4 py-10 text-center text-sm text-gray-500"
                     >
                       No orders yet. Place one from the Customer role.
@@ -237,25 +342,49 @@ export default function AdminDashboard() {
                       <td className="px-4 py-3 font-semibold">
                         ${o.total.toFixed(2)}
                       </td>
+                      <td className="px-4 py-3">
+                        {o.refund?.amount > 0 ? (
+                          <span className="text-xs font-bold text-red-600">
+                            − ${o.refund.amount.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-right">
-                        <Select
-                          value={o.status}
-                          onValueChange={(v) => adminForceStatus(o.id, v)}
-                        >
-                          <SelectTrigger
-                            className="ml-auto h-9 w-[170px] rounded-full border-[#E5E7EB] bg-white text-xs"
-                            data-testid={`admin-status-override-${o.id}`}
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setRefundOrderId(o.id)}
+                            disabled={
+                              (o.refund?.amount || 0) >= o.total ||
+                              o.status === "cancelled"
+                            }
+                            className="rounded-full border-[#E5E7EB] font-bold text-[#6C3BFF] disabled:opacity-40"
+                            data-testid={`admin-refund-${o.id}`}
                           >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ORDER_STATES.map((s) => (
-                              <SelectItem key={s} value={s}>
-                                Set: {STATE_LABELS[s]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            <RotateCcw className="mr-1 h-3 w-3" /> Refund
+                          </Button>
+                          <Select
+                            value={o.status}
+                            onValueChange={(v) => adminForceStatus(o.id, v)}
+                          >
+                            <SelectTrigger
+                              className="h-9 w-[160px] rounded-full border-[#E5E7EB] bg-white text-xs"
+                              data-testid={`admin-status-override-${o.id}`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[...ORDER_STATES, "cancelled"].map((s) => (
+                                <SelectItem key={s} value={s}>
+                                  Set: {STATE_LABELS[s] || s}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -265,6 +394,15 @@ export default function AdminDashboard() {
           </div>
         </div>
       </section>
+
+      <RefundDialog
+        order={refundOrder}
+        open={!!refundOrderId}
+        onOpenChange={(o) => !o && setRefundOrderId(null)}
+        onApply={(orderId, amount, note) => {
+          adminApplyRefund(orderId, amount, note);
+        }}
+      />
     </div>
   );
 }

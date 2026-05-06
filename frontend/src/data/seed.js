@@ -184,3 +184,7 @@ export const seedCustomers = [
 ];
 
 export const DELIVERY_FEE = 1.5;
+export const COURIER_FEE_PER_DELIVERY = 2.0;
+// Demo-fast operational windows. Real-world: 10min / 3min.
+export const AUTO_CANCEL_MS = 30000; // merchant must accept paid order in 30s
+export const REASSIGN_MS = 15000; // courier must pick up within 15s of being assigned
