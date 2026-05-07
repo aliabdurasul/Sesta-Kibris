@@ -20,6 +20,7 @@ export default function CustomerHome() {
 
   const merchants = useMemo(() => {
     return state.merchants.filter((m) => {
+      if (m.approvalStatus && m.approvalStatus !== "approved") return false;
       const matchesChip = chip === "all" || m.type === chip;
       const matchesQ =
         !query ||
@@ -29,7 +30,9 @@ export default function CustomerHome() {
     });
   }, [state.merchants, chip, query]);
 
-  const featured = state.merchants.filter((m) => m.featured);
+  const featured = state.merchants.filter(
+    (m) => m.featured && (!m.approvalStatus || m.approvalStatus === "approved"),
+  );
 
   return (
     <div className="gg-rise px-4 pb-6 pt-4" data-testid="customer-home">

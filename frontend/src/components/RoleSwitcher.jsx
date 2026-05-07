@@ -45,9 +45,9 @@ export default function RoleSwitcher() {
           data-testid="brand-logo"
         >
           <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#6C3BFF] text-white shadow-sm">
-            G
+            H
           </span>
-          <span className="text-lg">GapGel</span>
+          <span className="text-lg">HADE</span>
           <span className="ml-1 hidden rounded-full bg-[#00C2A8]/10 px-2 py-0.5 text-xs font-semibold text-[#00C2A8] md:inline">
             hiperlokal OS
           </span>

@@ -1,11 +1,13 @@
 import React from "react";
 import { useGapGel } from "@/store/GapGelContext";
-import { Bike, DollarSign, TrendingUp, Calendar } from "lucide-react";
+import { Bike, DollarSign, TrendingUp, Calendar, Power } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 export default function CourierProfile() {
-  const { state, findCourier, courierEarnings } = useGapGel();
+  const { state, findCourier, courierEarnings, toggleCourierOnline } = useGapGel();
   const me = findCourier(state.currentCourierId);
   const earn = courierEarnings(me.id);
+  const online = me.online !== false;
 
   const myOrders = state.orders.filter((o) => o.courierId === me.id);
   const completed = myOrders.filter((o) => o.status === "delivered").length;
@@ -18,7 +20,7 @@ export default function CourierProfile() {
           <div className="grid h-14 w-14 place-items-center rounded-full bg-[#6C3BFF] text-white">
             <Bike className="h-6 w-6" />
           </div>
-          <div>
+          <div className="flex-1">
             <div className="text-base font-bold">{me.name}</div>
             <div className="text-xs text-gray-500">
               {me.vehicle} ·{" "}
@@ -29,6 +31,26 @@ export default function CourierProfile() {
               </span>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <Power
+              className={`h-4 w-4 ${online ? "text-[#00C2A8]" : "text-gray-400"}`}
+            />
+            <Switch
+              checked={online}
+              disabled={me.status === "busy"}
+              onCheckedChange={(v) => toggleCourierOnline(me.id, v)}
+              data-testid="courier-online-toggle"
+            />
+          </div>
+        </div>
+        <div
+          className={`mt-2 text-[11px] font-semibold ${online ? "text-[#00A38D]" : "text-amber-700"}`}
+        >
+          {online
+            ? "Çevrimiçi — yeni teslimatlar atanabilir"
+            : me.status === "busy"
+              ? "Meşgul — devam eden teslimatınız var"
+              : "Çevrimdışı — atama almıyorsunuz"}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Stat label="Atanan" value={myOrders.length} />

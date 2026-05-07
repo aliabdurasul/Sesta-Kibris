@@ -16,6 +16,7 @@ import {
   COURIER_FEE_PER_DELIVERY,
   AUTO_CANCEL_MS,
   REASSIGN_MS,
+  PROMO_CODES,
 } from "@/data/seed";
 import {
   canTransition,
@@ -39,7 +40,7 @@ const initialState = {
   orderSeq: 1000,
 };
 
-const STORAGE_KEY = "gapgel-state-v1";
+const STORAGE_KEY = "hade-state-v2";
 
 function loadInitial() {
   try {
@@ -81,6 +82,41 @@ function loadInitial() {
 
 function reducer(state, action) {
   switch (action.type) {
+    case "SET_MERCHANT_APPROVAL": {
+      const { merchantId, approvalStatus } = action;
+      const merchants = state.merchants.map((m) =>
+        m.id === merchantId ? { ...m, approvalStatus } : m,
+      );
+      return { ...state, merchants };
+    }
+    case "SET_MERCHANT_DELIVERY_MODE": {
+      const { merchantId, deliveryMode } = action;
+      const merchants = state.merchants.map((m) =>
+        m.id === merchantId ? { ...m, deliveryMode } : m,
+      );
+      return { ...state, merchants };
+    }
+    case "SET_PRODUCT_STOCK": {
+      const { merchantId, productId, stockStatus } = action;
+      const merchants = state.merchants.map((m) =>
+        m.id === merchantId
+          ? {
+              ...m,
+              products: m.products.map((p) =>
+                p.id === productId ? { ...p, stockStatus } : p,
+              ),
+            }
+          : m,
+      );
+      return { ...state, merchants };
+    }
+    case "TOGGLE_COURIER_ONLINE": {
+      const { courierId, online } = action;
+      const couriers = state.couriers.map((c) =>
+        c.id === courierId ? { ...c, online } : c,
+      );
+      return { ...state, couriers };
+    }
     case "RESET_DEMO":
       return initialState;
     case "REORDER_FROM_ORDER": {
@@ -131,7 +167,7 @@ function reducer(state, action) {
       return { ...state, cart: { merchantId: null, items: [] } };
 
     case "ORDER_CREATE": {
-      const id = `GG-${state.orderSeq + 1}`;
+      const id = `HADE-${state.orderSeq + 1}`;
       const otp = String(Math.floor(1000 + Math.random() * 9000));
       const order = {
         id,
@@ -139,6 +175,8 @@ function reducer(state, action) {
         items: action.items,
         subtotal: action.subtotal,
         deliveryFee: action.deliveryFee,
+        discount: action.discount || 0,
+        promoCode: action.promoCode || null,
         total: action.total,
         customerId: state.currentCustomerId,
         merchantId: action.merchantId,
@@ -450,7 +488,7 @@ export function GapGelProvider({ children }) {
     dispatch({ type: "CART_REMOVE", productId });
   const cartClear = () => dispatch({ type: "CART_CLEAR" });
 
-  const placeOrder = () => {
+  const placeOrder = (opts = {}) => {
     if (!state.cart.merchantId || state.cart.items.length === 0) return null;
     const merchant = findMerchant(state.cart.merchantId);
     const items = state.cart.items.map((i) => {
@@ -465,13 +503,16 @@ export function GapGelProvider({ children }) {
     });
     const subtotal = +items.reduce((a, b) => a + b.lineTotal, 0).toFixed(2);
     const deliveryFee = DELIVERY_FEE;
-    const total = +(subtotal + deliveryFee).toFixed(2);
-    const orderId = `GG-${state.orderSeq + 1}`;
+    const discount = opts.discount || 0;
+    const total = +(Math.max(0, subtotal - discount) + deliveryFee).toFixed(2);
+    const orderId = `HADE-${state.orderSeq + 1}`;
     dispatch({
       type: "ORDER_CREATE",
       items,
       subtotal,
       deliveryFee,
+      discount,
+      promoCode: opts.promo?.code || null,
       total,
       merchantId: merchant.id,
       selfDelivery: isSelfDeliveryMerchant(merchant),
@@ -517,7 +558,9 @@ export function GapGelProvider({ children }) {
     dispatch({ type: "ORDER_TRANSITION", orderId, to: "ready" });
     // Auto-dispatch (only for non-self-delivery)
     if (!order.selfDelivery) {
-      const idle = state.couriers.find((c) => c.status === "idle");
+      const idle = state.couriers.find(
+        (c) => c.status === "idle" && c.online !== false,
+      );
       if (idle) {
         dispatch({
           type: "ORDER_ASSIGN_COURIER",
@@ -700,7 +743,10 @@ export function GapGelProvider({ children }) {
         const tryReassign = () => {
           // pick another idle courier different from current
           const other = state.couriers.find(
-            (c) => c.status === "idle" && c.id !== o.courierId,
+            (c) =>
+              c.status === "idle" &&
+              c.online !== false &&
+              c.id !== o.courierId,
           );
           if (other) {
             dispatch({
@@ -856,6 +902,148 @@ export function GapGelProvider({ children }) {
     toast.success("Demo sıfırlandı — başlangıç verisi yüklendi");
   }, []);
 
+  // HADE production-grade actions
+  const setMerchantApproval = (merchantId, approvalStatus) => {
+    dispatch({ type: "SET_MERCHANT_APPROVAL", merchantId, approvalStatus });
+    toast.success(
+      `Mağaza ${
+        approvalStatus === "approved"
+          ? "onaylandı"
+          : approvalStatus === "suspended"
+            ? "askıya alındı"
+            : "beklemede"
+      }`,
+    );
+  };
+  const setMerchantDeliveryMode = (merchantId, deliveryMode) => {
+    dispatch({ type: "SET_MERCHANT_DELIVERY_MODE", merchantId, deliveryMode });
+    toast.success("Teslimat modu güncellendi");
+  };
+  const setProductStock = (merchantId, productId, stockStatus) => {
+    dispatch({ type: "SET_PRODUCT_STOCK", merchantId, productId, stockStatus });
+  };
+  const toggleCourierOnline = (courierId, online) => {
+    dispatch({ type: "TOGGLE_COURIER_ONLINE", courierId, online });
+  };
+
+  // Composite Merchant Health Score (0-100)
+  const merchantHealthScore = useCallback(
+    (merchantId) => {
+      const orders = state.orders.filter((o) => o.merchantId === merchantId);
+      const decided = orders.filter(
+        (o) => o.status !== "created" && o.status !== "paid",
+      ).length;
+      const accepted = orders.filter((o) =>
+        ["accepted", "preparing", "ready", "out_for_delivery", "delivered"].includes(
+          o.status,
+        ),
+      ).length;
+      const cancelled = orders.filter((o) => o.status === "cancelled").length;
+      const delivered = orders.filter((o) => o.status === "delivered").length;
+      const ratings = orders
+        .filter((o) => o.rating?.merchantStars)
+        .map((o) => o.rating.merchantStars);
+      const avgRating =
+        ratings.length === 0
+          ? null
+          : ratings.reduce((a, b) => a + b, 0) / ratings.length;
+
+      const confirm = decided === 0 ? null : accepted / decided;
+      const cancelRate =
+        orders.length === 0 ? null : cancelled / orders.length;
+      const completion =
+        orders.length === 0 ? null : delivered / orders.length;
+
+      // Weighted composite (any null component contributes neutral 0.5)
+      const c = confirm == null ? 0.5 : confirm;
+      const r = avgRating == null ? 0.5 : avgRating / 5;
+      const ca = cancelRate == null ? 0 : cancelRate;
+      const cp = completion == null ? 0.5 : completion;
+      const score = Math.round(
+        (c * 0.45 + r * 0.3 + cp * 0.25 - ca * 0.4) * 100,
+      );
+      const clamped = Math.max(0, Math.min(100, score));
+      const flags = [];
+      if (confirm != null && confirm < 0.7) flags.push("Düşük onay oranı");
+      if (cancelRate != null && cancelRate > 0.2) flags.push("Yüksek iptal");
+      if (avgRating != null && avgRating < 3.5) flags.push("Düşük puan");
+      return {
+        score: clamped,
+        flags,
+        confirmRate: confirm,
+        cancelRate,
+        completion,
+        avgRating,
+      };
+    },
+    [state.orders],
+  );
+
+  // Apply promo code → returns discount {percent, label} or null
+  const applyPromo = useCallback((code) => {
+    const c = (code || "").trim().toUpperCase();
+    if (!c) return null;
+    const promo = PROMO_CODES[c];
+    if (!promo) return { invalid: true };
+    return { code: c, ...promo };
+  }, []);
+
+  // Recent platform events (derived from order histories) — admin event feed
+  const recentEvents = useCallback(
+    (limit = 30) => {
+      const events = [];
+      state.orders.forEach((o) => {
+        (o.history || []).forEach((h) => {
+          events.push({
+            orderId: o.id,
+            merchantId: o.merchantId,
+            customerId: o.customerId,
+            courierId: o.courierId,
+            status: h.status,
+            at: h.at,
+            by: h.by,
+            reason: h.reason,
+          });
+        });
+      });
+      events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+      return events.slice(0, limit);
+    },
+    [state.orders],
+  );
+
+  // Platform analytics
+  const platformAnalytics = useCallback(() => {
+    const delivered = state.orders.filter((o) => o.status === "delivered");
+    const gmv = +delivered
+      .reduce((a, b) => a + (b.total - (b.refund?.amount || 0)), 0)
+      .toFixed(2);
+    const refunds = +state.orders
+      .reduce((a, b) => a + (b.refund?.amount || 0), 0)
+      .toFixed(2);
+    const ordersByCustomer = state.orders.reduce((acc, o) => {
+      acc[o.customerId] = (acc[o.customerId] || 0) + 1;
+      return acc;
+    }, {});
+    const repeatCustomers = Object.values(ordersByCustomer).filter(
+      (n) => n >= 2,
+    ).length;
+    const totalCouriers = state.couriers.length;
+    const busy = state.couriers.filter((c) => c.status === "busy").length;
+    const offline = state.couriers.filter((c) => c.online === false).length;
+    const utilization = totalCouriers === 0 ? 0 : busy / totalCouriers;
+    return {
+      gmv,
+      refunds,
+      ordersTotal: state.orders.length,
+      delivered: delivered.length,
+      repeatCustomers,
+      utilization: +(utilization * 100).toFixed(0),
+      busyCouriers: busy,
+      offlineCouriers: offline,
+    };
+  }, [state.orders, state.couriers]);
+
   // ---- Derived: visible orders per role ----
   const visibleOrders = useMemo(() => {
     if (state.role === "customer") {
@@ -926,6 +1114,14 @@ export function GapGelProvider({ children }) {
     courierEarnings,
     merchantConfirmationRate,
     merchantRatings,
+    merchantHealthScore,
+    setMerchantApproval,
+    setMerchantDeliveryMode,
+    setProductStock,
+    toggleCourierOnline,
+    applyPromo,
+    recentEvents,
+    platformAnalytics,
     reorderFromOrder,
     resetDemo,
     visibleOrders,

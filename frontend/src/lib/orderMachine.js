@@ -44,6 +44,11 @@ export function isTerminal(s) {
 }
 
 export const SELF_DELIVERY_TYPES = new Set(["water", "gas"]);
+// Backward compat: prefer explicit deliveryMode, fallback to type-based legacy.
 export function isSelfDeliveryMerchant(merchant) {
-  return !!merchant && SELF_DELIVERY_TYPES.has(merchant.type);
+  if (!merchant) return false;
+  if (merchant.deliveryMode === "merchant_only") return true;
+  if (merchant.deliveryMode === "platform_only") return false;
+  if (merchant.deliveryMode === "hybrid") return false; // platform handles by default
+  return SELF_DELIVERY_TYPES.has(merchant.type);
 }

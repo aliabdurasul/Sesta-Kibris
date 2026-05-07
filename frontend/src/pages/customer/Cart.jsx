@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGapGel } from "@/store/GapGelContext";
-import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DELIVERY_FEE, EMPTY_IMAGES } from "@/data/seed";
 
 export default function CustomerCart() {
@@ -16,6 +17,7 @@ export default function CustomerCart() {
     cartRemove,
     placeOrder,
     payOrder,
+    applyPromo,
   } = useGapGel();
 
   const merchant = state.cart.merchantId
@@ -28,12 +30,26 @@ export default function CustomerCart() {
   });
 
   const subtotal = +items.reduce((a, b) => a + b.lineTotal, 0).toFixed(2);
-  const total = +(subtotal + (items.length ? DELIVERY_FEE : 0)).toFixed(2);
+  const [promoInput, setPromoInput] = useState("");
+  const [promo, setPromo] = useState(null);
+  const discount =
+    promo && promo.type === "percent" ? +(subtotal * promo.value / 100).toFixed(2) : 0;
+  const total = +(
+    Math.max(0, subtotal - discount) + (items.length ? DELIVERY_FEE : 0)
+  ).toFixed(2);
+
+  const handleApplyPromo = () => {
+    const result = applyPromo(promoInput);
+    if (!result || result.invalid) {
+      setPromo(null);
+      return;
+    }
+    setPromo(result);
+  };
 
   const handlePay = () => {
-    const orderId = placeOrder();
+    const orderId = placeOrder({ promo, discount, total });
     if (orderId) {
-      // Simulate payment immediately after order creation
       payOrder(orderId);
       navigate(`/customer/orders/${orderId}`);
     }
@@ -147,12 +163,54 @@ export default function CustomerCart() {
 
       {/* Totals */}
       <div className="mt-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 text-sm shadow-sm">
+        {/* Promo */}
+        <div className="mb-3 flex gap-2">
+          <div className="relative flex-1">
+            <Tag className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <Input
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value)}
+              placeholder="Promosyon kodu (örn. HADE10)"
+              className="h-9 rounded-full border-[#E5E7EB] pl-8 text-xs"
+              data-testid="promo-input"
+            />
+          </div>
+          <Button
+            onClick={handleApplyPromo}
+            variant="outline"
+            className="h-9 rounded-full border-[#6C3BFF]/30 text-xs font-bold text-[#6C3BFF]"
+            data-testid="promo-apply"
+          >
+            Uygula
+          </Button>
+        </div>
+        {promo && !promo.invalid && (
+          <div
+            className="mb-2 rounded-lg bg-[#00C2A8]/10 p-2 text-xs font-bold text-[#00A38D]"
+            data-testid="promo-applied"
+          >
+            ✓ {promo.code} uygulandı · %{promo.value} indirim
+          </div>
+        )}
+        {promo?.invalid && (
+          <div className="mb-2 rounded-lg bg-red-50 p-2 text-xs font-bold text-red-600">
+            Geçersiz promosyon kodu
+          </div>
+        )}
         <div className="flex justify-between">
           <span className="text-gray-500">Ara toplam</span>
           <span className="font-semibold" data-testid="cart-subtotal">
             ${subtotal.toFixed(2)}
           </span>
         </div>
+        {discount > 0 && (
+          <div className="mt-1 flex justify-between text-[#00A38D]">
+            <span>İndirim ({promo?.code})</span>
+            <span className="font-semibold" data-testid="cart-discount">
+              − ${discount.toFixed(2)}
+            </span>
+          </div>
+        )}
         <div className="mt-1.5 flex justify-between">
           <span className="text-gray-500">Teslimat ücreti</span>
           <span className="font-semibold">${DELIVERY_FEE.toFixed(2)}</span>

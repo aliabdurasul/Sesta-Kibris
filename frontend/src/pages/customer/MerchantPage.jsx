@@ -76,21 +76,31 @@ export default function CustomerMerchant() {
           Menü
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          {merchant.products.map((p) => {
+          {merchant.products
+            .filter((p) => p.stockStatus !== "hidden")
+            .map((p) => {
             const qty = qtyFor(p.id);
+            const sold = p.stockStatus === "out_of_stock";
             return (
               <div
                 key={p.id}
-                className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm"
+                className={`overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm ${sold ? "opacity-60" : ""}`}
                 data-testid={`product-card-${p.id}`}
               >
-                <div className="aspect-square w-full overflow-hidden bg-gray-100">
+                <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
                   <img
                     src={p.image}
                     alt={p.name}
                     className="h-full w-full object-cover"
                     loading="lazy"
                   />
+                  {sold && (
+                    <div className="absolute inset-0 grid place-items-center bg-black/45">
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-red-600">
+                        TÜKENDİ
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-3">
                   <div className="min-h-[40px] text-sm font-semibold leading-tight">
@@ -100,11 +110,15 @@ export default function CustomerMerchant() {
                     <div className="font-bold text-[#1A1A1A]">
                       ${p.price.toFixed(2)}
                     </div>
-                    {qty === 0 ? (
+                    {sold ? (
+                      <span className="text-xs font-semibold text-gray-400">
+                        Stok yok
+                      </span>
+                    ) : qty === 0 ? (
                       <button
                         onClick={() => cartAdd(merchant.id, p.id)}
                         className="tap grid h-8 w-8 place-items-center rounded-full bg-[#6C3BFF] text-white shadow-md hover:bg-[#582CD6]"
-                        aria-label="Add to cart"
+                        aria-label="Sepete ekle"
                         data-testid={`add-product-${p.id}`}
                       >
                         <Plus className="h-4 w-4" strokeWidth={3} />

@@ -47,6 +47,8 @@ export const seedMerchants = [
     id: "m1",
     name: "Fresh Market",
     type: "market",
+    deliveryMode: "platform_only",
+    approvalStatus: "approved",
     rating: 4.8,
     delivery: "15–25 dk",
     image: MERCHANT_IMAGES.market,
@@ -96,6 +98,8 @@ export const seedMerchants = [
     id: "m2",
     name: "Aqua Express",
     type: "water",
+    deliveryMode: "merchant_only",
+    approvalStatus: "approved",
     rating: 4.6,
     delivery: "20–35 dk",
     image: MERCHANT_IMAGES.water,
@@ -133,6 +137,8 @@ export const seedMerchants = [
     id: "m3",
     name: "GasGo",
     type: "gas",
+    deliveryMode: "hybrid",
+    approvalStatus: "approved",
     rating: 4.7,
     delivery: "30–45 dk",
     image: MERCHANT_IMAGES.gas,
@@ -184,6 +190,22 @@ export const seedCustomers = [
 ];
 
 export const TYPE_LABELS = { market: "Market", water: "Su", gas: "Tüp" };
+export const DELIVERY_MODE_LABELS = {
+  platform_only: "Platform kurye",
+  merchant_only: "Mağaza teslim",
+  hybrid: "Hibrit",
+};
+export const APPROVAL_LABELS = {
+  approved: "Onaylı",
+  pending: "Beklemede",
+  suspended: "Askıda",
+};
+export const STOCK_LABELS = {
+  in_stock: "Stokta",
+  out_of_stock: "Tükendi",
+  hidden: "Gizli",
+};
+export const PROMO_CODES = { HADE10: { type: "percent", value: 10 } };
 
 export const DELIVERY_FEE = 1.5;
 export const COURIER_FEE_PER_DELIVERY = 2.0;

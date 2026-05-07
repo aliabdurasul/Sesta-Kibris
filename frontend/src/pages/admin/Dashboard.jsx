@@ -22,6 +22,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { ORDER_STATES, STATE_LABELS } from "@/lib/orderMachine";
+import { DELIVERY_MODE_LABELS, APPROVAL_LABELS } from "@/data/seed";
 import RevenueChart from "@/components/RevenueChart";
 import RefundDialog from "@/components/RefundDialog";
 
@@ -60,6 +61,11 @@ export default function AdminDashboard() {
     adminForceAssign,
     adminApplyRefund,
     merchantConfirmationRate,
+    merchantHealthScore,
+    setMerchantApproval,
+    setMerchantDeliveryMode,
+    platformAnalytics,
+    recentEvents,
   } = useGapGel();
 
   const [statusFilter, setStatusFilter] = useState("all");
@@ -170,7 +176,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Metrics */}
-        <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
           <MetricCard label="Toplam sipariş" value={metrics.total} accent="#6C3BFF" />
           <MetricCard label="Aktif" value={metrics.active} accent="#00C2A8" />
           <MetricCard
@@ -186,6 +192,33 @@ export default function AdminDashboard() {
           />
         </div>
 
+        {/* HADE platform analytics */}
+        <div
+          className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4"
+          data-testid="platform-analytics"
+        >
+          <MetricCard
+            label="GMV (toplam ciro)"
+            value={`$${platformAnalytics().gmv}`}
+            accent="#6C3BFF"
+          />
+          <MetricCard
+            label="Tekrarlayan müşteri"
+            value={platformAnalytics().repeatCustomers}
+            accent="#00C2A8"
+          />
+          <MetricCard
+            label="Kurye kullanım %"
+            value={`${platformAnalytics().utilization}%`}
+            accent="#1A1A1A"
+          />
+          <MetricCard
+            label="Toplam iade"
+            value={`$${platformAnalytics().refunds}`}
+            accent="#FF3B30"
+          />
+        </div>
+
         {/* Chart + merchant rates */}
         <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -196,38 +229,190 @@ export default function AdminDashboard() {
             data-testid="merchant-confirmation-rates"
           >
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#6C3BFF]">
-              Mağaza onay oranı
+              Mağaza sağlık skoru
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {state.merchants.map((m) => {
+                const h = merchantHealthScore(m.id);
                 const r = merchantConfirmationRate(m.id);
-                const pct = r.rate == null ? 0 : r.rate;
-                const bad = r.rate != null && r.rate < 70;
+                const bad = h.score < 60;
                 return (
                   <div key={m.id} data-testid={`mrate-${m.id}`}>
                     <div className="flex items-baseline justify-between text-xs">
                       <span className="font-semibold">{m.name}</span>
                       <span
-                        className={`font-bold ${bad ? "text-red-600" : "text-[#1A1A1A]"}`}
+                        className={`font-bold ${bad ? "text-red-600" : h.score >= 80 ? "text-[#00A38D]" : "text-[#1A1A1A]"}`}
+                        data-testid={`health-${m.id}`}
                       >
-                        {r.rate == null ? "—" : `${r.rate}%`}
+                        {h.score} / 100
                       </span>
                     </div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
                       <div
                         className={`h-full ${bad ? "bg-red-400" : "bg-[#00C2A8]"}`}
-                        style={{ width: `${pct}%` }}
+                        style={{ width: `${h.score}%` }}
                       />
                     </div>
                     <div className="text-[10px] text-gray-500">
-                      {r.accepted}/{r.decided} karar · {r.total} toplam
+                      Onay {r.rate == null ? "—" : `${r.rate}%`} · İptal{" "}
+                      {h.cancelRate == null
+                        ? "—"
+                        : `${Math.round(h.cancelRate * 100)}%`}{" "}
+                      · Puan{" "}
+                      {h.avgRating == null ? "—" : h.avgRating.toFixed(1)}
                     </div>
+                    {h.flags.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {h.flags.map((f) => (
+                          <span
+                            key={f}
+                            className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700"
+                          >
+                            ⚠ {f}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
         </div>
+
+        {/* Merchant management */}
+        <div
+          className="mb-4 overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm"
+          data-testid="admin-merchants-panel"
+        >
+          <div className="border-b border-[#E5E7EB] px-4 py-3 text-sm font-bold uppercase tracking-wide text-[#6C3BFF]">
+            Mağaza yönetimi
+          </div>
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[#F7F7FB] text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-4 py-3">Mağaza</th>
+                <th className="px-4 py-3">Tür</th>
+                <th className="px-4 py-3">Durum</th>
+                <th className="px-4 py-3">Teslimat modu</th>
+                <th className="px-4 py-3 text-right">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E5E7EB]">
+              {state.merchants.map((m) => (
+                <tr key={m.id} data-testid={`admin-merchant-row-${m.id}`}>
+                  <td className="px-4 py-3 font-semibold">{m.name}</td>
+                  <td className="px-4 py-3 text-xs uppercase text-gray-500">
+                    {m.type}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                        m.approvalStatus === "approved"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : m.approvalStatus === "suspended"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-amber-100 text-amber-700"
+                      }`}
+                      data-testid={`merchant-approval-${m.id}`}
+                    >
+                      {APPROVAL_LABELS[m.approvalStatus] || "—"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Select
+                      value={m.deliveryMode || "platform_only"}
+                      onValueChange={(v) => setMerchantDeliveryMode(m.id, v)}
+                    >
+                      <SelectTrigger
+                        className="h-8 w-[160px] rounded-full border-[#E5E7EB] bg-white text-xs"
+                        data-testid={`merchant-mode-${m.id}`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(DELIVERY_MODE_LABELS).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>
+                            {v}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-1.5">
+                      {m.approvalStatus !== "approved" && (
+                        <Button
+                          size="sm"
+                          onClick={() => setMerchantApproval(m.id, "approved")}
+                          className="rounded-full bg-[#00C2A8] text-xs font-bold hover:bg-[#00A38D]"
+                          data-testid={`approve-merchant-${m.id}`}
+                        >
+                          Onayla
+                        </Button>
+                      )}
+                      {m.approvalStatus !== "suspended" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setMerchantApproval(m.id, "suspended")}
+                          className="rounded-full border-red-200 text-xs font-bold text-red-600"
+                          data-testid={`suspend-merchant-${m.id}`}
+                        >
+                          Askıya al
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Event feed */}
+        <div
+          className="mb-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm"
+          data-testid="admin-event-feed"
+        >
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#6C3BFF]">
+            Son olaylar
+          </div>
+          {recentEvents(15).length === 0 ? (
+            <div className="text-xs text-gray-400">Henüz olay yok.</div>
+          ) : (
+            <ul className="space-y-1.5 text-xs">
+              {recentEvents(15).map((e, idx) => (
+                <li
+                  key={`${e.orderId}-${idx}`}
+                  className="flex items-center justify-between border-b border-dashed border-gray-100 pb-1.5 last:border-0"
+                >
+                  <span>
+                    <span className="font-bold text-[#6C3BFF]">{e.orderId}</span>{" "}
+                    →{" "}
+                    <span className="font-semibold">
+                      {STATE_LABELS[e.status] || e.status}
+                    </span>
+                    {e.by === "admin" && (
+                      <span className="ml-1 rounded-full bg-purple-100 px-1.5 py-0.5 text-[9px] font-bold text-purple-700">
+                        admin
+                      </span>
+                    )}
+                    {e.reason && (
+                      <span className="ml-1 text-gray-500">· {e.reason}</span>
+                    )}
+                  </span>
+                  <span className="text-[10px] text-gray-400">
+                    {new Date(e.at).toLocaleTimeString("tr-TR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          </div>
 
         {/* Filters */}
         <div className="mb-3 flex flex-col gap-2 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm md:flex-row md:items-center">
