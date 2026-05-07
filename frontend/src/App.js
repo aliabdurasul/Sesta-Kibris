@@ -21,10 +21,12 @@ import CustomerProfile from "@/pages/customer/Profile";
 import CustomerRate from "@/pages/customer/Rate";
 
 import MerchantDashboard from "@/pages/merchant/Dashboard";
+import MerchantOnboarding from "@/pages/merchant/Onboarding";
 
 import CourierDeliveries from "@/pages/courier/Deliveries";
 import CourierHistory from "@/pages/courier/History";
 import CourierProfile from "@/pages/courier/Profile";
+import CourierOnboarding from "@/pages/courier/Onboarding";
 
 import AdminDashboard from "@/pages/admin/Dashboard";
 
@@ -62,6 +64,16 @@ export default function App() {
               <Route path="/courier/history" element={<CourierHistory />} />
               <Route path="/courier/profile" element={<CourierProfile />} />
             </Route>
+
+            {/* Onboarding wizards (no shell) */}
+            <Route
+              path="/merchant/onboarding"
+              element={<MerchantOnboarding />}
+            />
+            <Route
+              path="/courier/onboarding"
+              element={<CourierOnboarding />}
+            />
 
             {/* Merchant & Admin - desktop shell */}
             <Route element={<DesktopShell />}>

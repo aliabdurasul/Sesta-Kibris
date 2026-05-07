@@ -1,9 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGapGel } from "@/store/GapGelContext";
-import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Tag } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Minus,
+  Trash2,
+  ShoppingCart,
+  Tag,
+  MapPin,
+  Check,
+  PlusCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { DELIVERY_FEE, EMPTY_IMAGES } from "@/data/seed";
 
 export default function CustomerCart() {
@@ -12,6 +23,7 @@ export default function CustomerCart() {
     state,
     findMerchant,
     findProduct,
+    findCustomer,
     cartAdd,
     cartDec,
     cartRemove,
@@ -23,6 +35,26 @@ export default function CustomerCart() {
   const merchant = state.cart.merchantId
     ? findMerchant(state.cart.merchantId)
     : null;
+
+  const customer = findCustomer(state.currentCustomerId);
+  const addresses = useMemo(
+    () => customer?.addresses || [],
+    [customer],
+  );
+  const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
+  const [selectedAddressId, setSelectedAddressId] = useState(
+    defaultAddr?.id || null,
+  );
+  const selectedAddress = useMemo(
+    () => addresses.find((a) => a.id === selectedAddressId) || defaultAddr,
+    [addresses, selectedAddressId, defaultAddr],
+  );
+  const [addressNotes, setAddressNotes] = useState(selectedAddress?.notes || "");
+
+  // Sync notes when switching address
+  React.useEffect(() => {
+    setAddressNotes(selectedAddress?.notes || "");
+  }, [selectedAddressId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const items = state.cart.items.map((i) => {
     const p = findProduct(state.cart.merchantId, i.productId);
@@ -48,7 +80,13 @@ export default function CustomerCart() {
   };
 
   const handlePay = () => {
-    const orderId = placeOrder({ promo, discount, total });
+    const orderId = placeOrder({
+      promo,
+      discount,
+      total,
+      addressId: selectedAddress?.id,
+      addressNotes,
+    });
     if (orderId) {
       payOrder(orderId);
       navigate(`/customer/orders/${orderId}`);
@@ -109,6 +147,82 @@ export default function CustomerCart() {
         <div className="text-xs text-gray-500">Sipariş veriliyor</div>
         <div className="text-base font-bold">{merchant?.name}</div>
         <div className="text-xs text-gray-500">{merchant?.delivery}</div>
+      </div>
+
+      {/* Address selector */}
+      <div
+        className="mb-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm"
+        data-testid="cart-address-selector"
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-600">
+            <MapPin className="h-3.5 w-3.5" /> Teslimat adresi
+          </div>
+          <button
+            onClick={() => navigate("/customer/profile")}
+            className="text-xs font-bold text-[#6C3BFF] hover:underline"
+            data-testid="cart-manage-addresses"
+          >
+            <PlusCircle className="mr-1 inline h-3 w-3" />
+            Adres ekle
+          </button>
+        </div>
+        <div className="space-y-1.5">
+          {addresses.map((a) => {
+            const isSel = a.id === selectedAddress?.id;
+            return (
+              <button
+                key={a.id}
+                onClick={() => setSelectedAddressId(a.id)}
+                className={`tap flex w-full items-start gap-2 rounded-xl border p-2.5 text-left transition-all ${
+                  isSel
+                    ? "border-[#6C3BFF] bg-[#6C3BFF]/5"
+                    : "border-[#E5E7EB] bg-white hover:border-[#6C3BFF]/30"
+                }`}
+                data-testid={`cart-address-option-${a.id}`}
+              >
+                <div
+                  className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 ${
+                    isSel
+                      ? "border-[#6C3BFF] bg-[#6C3BFF]"
+                      : "border-gray-300 bg-white"
+                  }`}
+                >
+                  {isSel && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold">{a.label}</span>
+                    {a.isDefault && (
+                      <span className="rounded-full bg-[#00C2A8]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#00A38D]">
+                        Varsayılan
+                      </span>
+                    )}
+                  </div>
+                  <div className="truncate text-xs text-gray-600">{a.line}</div>
+                  {a.district && (
+                    <div className="truncate text-[11px] text-gray-400">
+                      {a.district}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {/* Delivery notes */}
+        <div className="mt-3">
+          <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-500">
+            Teslimat notu (opsiyonel)
+          </label>
+          <Textarea
+            value={addressNotes}
+            onChange={(e) => setAddressNotes(e.target.value)}
+            placeholder="Örn: Resepsiyona bırakın, zile basmayın…"
+            className="min-h-[60px] resize-none rounded-xl border-[#E5E7EB] text-xs"
+            data-testid="cart-address-notes"
+          />
+        </div>
       </div>
 
       <div className="space-y-2.5">

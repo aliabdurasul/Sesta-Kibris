@@ -175,10 +175,36 @@ export const seedMerchants = [
 ];
 
 export const seedCouriers = [
-  { id: "co1", name: "Ali Yılmaz", status: "idle", vehicle: "Motosiklet" },
-  { id: "co2", name: "Maya Çelik", status: "idle", vehicle: "Elektrikli Bisiklet" },
-  { id: "co3", name: "Rauf Patel", status: "idle", vehicle: "Motosiklet" },
+  {
+    id: "co1",
+    name: "Ali Yılmaz",
+    status: "idle",
+    vehicle: "Motosiklet",
+    courierType: "platform",
+    merchantId: null,
+  },
+  {
+    id: "co2",
+    name: "Maya Çelik",
+    status: "idle",
+    vehicle: "Elektrikli Bisiklet",
+    courierType: "platform",
+    merchantId: null,
+  },
+  {
+    id: "co3",
+    name: "Rauf Patel",
+    status: "idle",
+    vehicle: "Motosiklet",
+    courierType: "merchant",
+    merchantId: "m1",
+  },
 ];
+
+export const COURIER_TYPE_LABELS = {
+  platform: "Platform",
+  merchant: "Mağaza Kuryesi",
+};
 
 export const seedCustomers = [
   {
@@ -186,6 +212,24 @@ export const seedCustomers = [
     name: "Demo Kullanıcı",
     address: "Atatürk Caddesi 221, Daire 4",
     phone: "+90 392 555 0191",
+    addresses: [
+      {
+        id: "addr-u1-1",
+        label: "Ev",
+        line: "Atatürk Caddesi 221, Daire 4",
+        district: "Lefkoşa Merkez",
+        notes: "Zile basmadan kapıya bırakın",
+        isDefault: true,
+      },
+      {
+        id: "addr-u1-2",
+        label: "İş",
+        line: "Bedrettin Demirel Cd. 17, Kat 3",
+        district: "Köşklüçiftlik",
+        notes: "Resepsiyona teslim",
+        isDefault: false,
+      },
+    ],
   },
 ];
 

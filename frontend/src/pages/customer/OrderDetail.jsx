@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useGapGel } from "@/store/GapGelContext";
 import OrderTimeline from "@/components/OrderTimeline";
+import LiveProgressStrip from "@/components/LiveProgressStrip";
 import StatusBadge from "@/components/StatusBadge";
+import DisputeDialog, { DISPUTE_REASON_LABELS } from "@/components/DisputeDialog";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -12,13 +14,15 @@ import {
   ShieldCheck,
   Star,
   MessageSquareWarning,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function CustomerOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { state, findMerchant, findCourier, findCustomer, respondSubstitution, reorderFromOrder } = useGapGel();
+  const { state, findMerchant, findCourier, findCustomer, respondSubstitution, reorderFromOrder, openDispute } = useGapGel();
   const order = state.orders.find((o) => o.id === id);
+  const [disputeOpen, setDisputeOpen] = useState(false);
 
   if (!order) {
     return (
@@ -51,6 +55,16 @@ export default function CustomerOrderDetail() {
         <div className="ml-auto">
           <StatusBadge status={order.status} />
         </div>
+      </div>
+
+      {/* Live progress strip */}
+      <div className="mb-3">
+        <LiveProgressStrip
+          status={order.status}
+          cancelled={order.status === "cancelled"}
+          order={order}
+          merchant={merchant}
+        />
       </div>
 
       {/* OTP card */}
@@ -168,11 +182,39 @@ export default function CustomerOrderDetail() {
               if (reorderFromOrder(order.id)) navigate("/customer/cart");
             }}
             variant="outline"
-            className="tap mb-3 h-12 w-full rounded-full border-[#6C3BFF]/30 font-bold text-[#6C3BFF] hover:bg-[#6C3BFF]/5"
+            className="tap mb-2 h-12 w-full rounded-full border-[#6C3BFF]/30 font-bold text-[#6C3BFF] hover:bg-[#6C3BFF]/5"
             data-testid="reorder-from-detail"
           >
             Tekrar sipariş ver
           </Button>
+          {!order.dispute && (
+            <Button
+              onClick={() => setDisputeOpen(true)}
+              variant="outline"
+              className="tap mb-3 h-12 w-full rounded-full border-amber-200 font-bold text-amber-700 hover:bg-amber-50"
+              data-testid="open-dispute-button"
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Şikayet / iade talep et
+            </Button>
+          )}
+          {order.dispute && (
+            <div
+              className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs"
+              data-testid="dispute-status-card"
+            >
+              <div className="flex items-center gap-1.5 font-bold uppercase tracking-wide text-amber-700">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Şikayet · {DISPUTE_REASON_LABELS[order.dispute.reason] || order.dispute.reason}
+              </div>
+              <div className="mt-1 text-amber-900">"{order.dispute.message}"</div>
+              <div className="mt-1.5 text-[11px] font-semibold text-amber-700">
+                {order.dispute.status === "open"
+                  ? "Yönetici inceliyor…"
+                  : `Çözüldü: ${order.dispute.resolution}${order.dispute.note ? ` · ${order.dispute.note}` : ""}`}
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -222,10 +264,38 @@ export default function CustomerOrderDetail() {
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-[#E5E7EB] bg-white p-3 text-xs text-gray-500 shadow-sm">
-        <MapPin className="h-4 w-4" />
-        Teslimat adresi: {findCustomer(order.customerId)?.address}
+      <div className="mt-3 flex items-start gap-2 rounded-2xl border border-[#E5E7EB] bg-white p-3 text-xs text-gray-600 shadow-sm">
+        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#6C3BFF]" />
+        <div className="min-w-0 flex-1" data-testid="order-address-snapshot">
+          {order.addressSnapshot ? (
+            <>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                Teslimat adresi · {order.addressSnapshot.label}
+              </div>
+              <div className="text-gray-700">{order.addressSnapshot.line}</div>
+              {order.addressSnapshot.district && (
+                <div className="text-[11px] text-gray-400">
+                  {order.addressSnapshot.district}
+                </div>
+              )}
+              {order.addressSnapshot.notes && (
+                <div className="mt-1 rounded-md bg-amber-50 px-2 py-1 text-[11px] italic text-amber-800">
+                  Not: "{order.addressSnapshot.notes}"
+                </div>
+              )}
+            </>
+          ) : (
+            <span>Teslimat adresi: {findCustomer(order.customerId)?.address}</span>
+          )}
+        </div>
       </div>
+
+      <DisputeDialog
+        open={disputeOpen}
+        onOpenChange={setDisputeOpen}
+        orderId={order.id}
+        onSubmit={openDispute}
+      />
     </div>
   );
 }

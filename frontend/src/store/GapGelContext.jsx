@@ -66,14 +66,37 @@ function loadInitial() {
           ...o,
         }))
       : [];
+    // Migration: ensure every customer has an `addresses` array
+    const customers = (saved.customers ?? initialState.customers).map((c) => {
+      if (Array.isArray(c.addresses) && c.addresses.length > 0) return c;
+      return {
+        ...c,
+        addresses: [
+          {
+            id: `addr-${c.id}-1`,
+            label: "Ev",
+            line: c.address || "—",
+            district: "",
+            notes: "",
+            isDefault: true,
+          },
+        ],
+      };
+    });
+    // Migration: ensure couriers have `courierType` field
+    const couriers = (saved.couriers ?? initialState.couriers).map((c) => ({
+      courierType: "platform",
+      merchantId: null,
+      ...c,
+    }));
     return {
       ...initialState,
       ...saved,
       orders,
       // Always preserve the seed-driven shape if missing
       merchants: saved.merchants ?? initialState.merchants,
-      couriers: saved.couriers ?? initialState.couriers,
-      customers: saved.customers ?? initialState.customers,
+      couriers,
+      customers,
       cart: saved.cart ?? initialState.cart,
     };
   } catch {
@@ -117,6 +140,116 @@ function reducer(state, action) {
         c.id === courierId ? { ...c, online } : c,
       );
       return { ...state, couriers };
+    }
+    case "ADD_ADDRESS": {
+      const { customerId, address } = action;
+      const customers = state.customers.map((c) =>
+        c.id === customerId
+          ? {
+              ...c,
+              addresses: [...(c.addresses || []), address],
+            }
+          : c,
+      );
+      return { ...state, customers };
+    }
+    case "REMOVE_ADDRESS": {
+      const { customerId, addressId } = action;
+      const customers = state.customers.map((c) => {
+        if (c.id !== customerId) return c;
+        const filtered = (c.addresses || []).filter((a) => a.id !== addressId);
+        // If we deleted the default and others exist, promote the first
+        const hasDefault = filtered.some((a) => a.isDefault);
+        if (!hasDefault && filtered.length > 0) filtered[0].isDefault = true;
+        return { ...c, addresses: filtered };
+      });
+      return { ...state, customers };
+    }
+    case "SET_DEFAULT_ADDRESS": {
+      const { customerId, addressId } = action;
+      const customers = state.customers.map((c) =>
+        c.id === customerId
+          ? {
+              ...c,
+              addresses: (c.addresses || []).map((a) => ({
+                ...a,
+                isDefault: a.id === addressId,
+              })),
+            }
+          : c,
+      );
+      return { ...state, customers };
+    }
+    case "UPDATE_ADDRESS": {
+      const { customerId, addressId, patch } = action;
+      const customers = state.customers.map((c) =>
+        c.id === customerId
+          ? {
+              ...c,
+              addresses: (c.addresses || []).map((a) =>
+                a.id === addressId ? { ...a, ...patch } : a,
+              ),
+            }
+          : c,
+      );
+      return { ...state, customers };
+    }
+    case "ADD_MERCHANT": {
+      return { ...state, merchants: [...state.merchants, action.merchant] };
+    }
+    case "ADD_COURIER": {
+      return { ...state, couriers: [...state.couriers, action.courier] };
+    }
+    case "SET_COURIER_APPROVAL": {
+      const { courierId, approvalStatus } = action;
+      const couriers = state.couriers.map((c) =>
+        c.id === courierId ? { ...c, approvalStatus } : c,
+      );
+      return { ...state, couriers };
+    }
+    case "OPEN_DISPUTE": {
+      const { orderId, reason, message } = action;
+      const orders = state.orders.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              dispute: {
+                id: `disp-${Date.now()}`,
+                reason,
+                message,
+                status: "open",
+                openedAt: new Date().toISOString(),
+                resolution: null,
+              },
+            }
+          : o,
+      );
+      return { ...state, orders };
+    }
+    case "RESOLVE_DISPUTE": {
+      const { orderId, resolution, refundAmount, note } = action;
+      const orders = state.orders.map((o) => {
+        if (o.id !== orderId || !o.dispute) return o;
+        const next = {
+          ...o,
+          dispute: {
+            ...o.dispute,
+            status: "resolved",
+            resolvedAt: new Date().toISOString(),
+            resolution,
+            note: note || "",
+          },
+        };
+        if (refundAmount > 0) {
+          next.refund = {
+            amount: refundAmount,
+            note: `Dispute: ${resolution}`,
+            at: new Date().toISOString(),
+          };
+        }
+        return next;
+      });
+      return { ...state, orders };
     }
     case "RESET_DEMO":
       return initialState;
@@ -183,6 +316,7 @@ function reducer(state, action) {
         merchantId: action.merchantId,
         courierId: null,
         selfDelivery: action.selfDelivery,
+        addressSnapshot: action.addressSnapshot || null,
         otp,
         otpVerified: false,
         rating: null,
@@ -451,6 +585,88 @@ export function GapGelProvider({ children }) {
     }
   }, [state]);
 
+  // --- Customer status-change push notifications (toast queue) ---
+  // Compares previous order statuses vs current and emits a toast for each
+  // status change on an order owned by the active customer.
+  const prevStatusesRef = useRef({});
+  useEffect(() => {
+    const prev = prevStatusesRef.current;
+    const next = {};
+    const customerId = state.currentCustomerId;
+    const labels = {
+      paid: { msg: "Ödemeniz alındı", desc: "Mağaza onay bekliyor." },
+      accepted: { msg: "Mağaza siparişinizi kabul etti", desc: "Hazırlanmaya başlanacak." },
+      preparing: { msg: "Siparişiniz hazırlanıyor", desc: "Az kaldı!" },
+      ready: { msg: "Siparişiniz hazır", desc: "Kurye atanıyor." },
+      out_for_delivery: { msg: "Siparişiniz yola çıktı", desc: "Kurye yolda — OTP'nizi hazır tutun." },
+      delivered: { msg: "Siparişiniz teslim edildi", desc: "Afiyet olsun! Değerlendirir misiniz?" },
+      cancelled: { msg: "Sipariş iptal edildi", desc: "İade işleniyor." },
+    };
+    state.orders.forEach((o) => {
+      next[o.id] = o.status;
+      // Only notify customer-owned orders, when role=customer (avoid spam during merchant/courier interactions)
+      if (o.customerId !== customerId) return;
+      if (state.role !== "customer") return;
+      // Skip first-pass (no prev entry yet) — initial mount of cached orders
+      if (prev[o.id] === undefined) return;
+      if (prev[o.id] === o.status) return;
+      const cfg = labels[o.status];
+      if (cfg) {
+        toast(cfg.msg, { description: `${o.id} · ${cfg.desc}` });
+      }
+    });
+    prevStatusesRef.current = next;
+  }, [state.orders, state.currentCustomerId, state.role]);
+
+  // --- Merchant push notifications ---
+  // Ring when an order owned by the active merchant becomes `paid` (new order).
+  const prevMerchantStatusesRef = useRef({});
+  useEffect(() => {
+    const prev = prevMerchantStatusesRef.current;
+    const next = {};
+    state.orders.forEach((o) => {
+      next[o.id] = o.status;
+      if (state.role !== "merchant") return;
+      if (o.merchantId !== state.currentMerchantId) return;
+      if (prev[o.id] === undefined) return;
+      if (prev[o.id] === o.status) return;
+      if (o.status === "paid") {
+        toast.success("🔔 Yeni sipariş geldi!", {
+          description: `${o.id} ödendi — kabul bekliyor.`,
+          duration: 6000,
+        });
+      } else if (o.status === "cancelled" && prev[o.id] === "paid") {
+        toast.warning("Sipariş otomatik iptal edildi", {
+          description: `${o.id} zaman aşımı.`,
+        });
+      }
+    });
+    prevMerchantStatusesRef.current = next;
+  }, [state.orders, state.currentMerchantId, state.role]);
+
+  // --- Courier push notifications ---
+  // Ring when an order is assigned to the active courier.
+  const prevCourierAssignRef = useRef({});
+  useEffect(() => {
+    const prev = prevCourierAssignRef.current;
+    const next = {};
+    state.orders.forEach((o) => {
+      next[o.id] = o.courierId || null;
+      if (state.role !== "courier") return;
+      if (o.courierId !== state.currentCourierId) return;
+      // Only notify on freshly assigned orders that are still pending pickup
+      if (!["ready", "out_for_delivery"].includes(o.status)) return;
+      if (prev[o.id] === o.courierId) return;
+      if (o.status === "ready") {
+        toast.success("🛵 Yeni teslimat atandı!", {
+          description: `${o.id} — alım bekliyor.`,
+          duration: 6000,
+        });
+      }
+    });
+    prevCourierAssignRef.current = next;
+  }, [state.orders, state.currentCourierId, state.role]);
+
   const findMerchant = useCallback(
     (id) => state.merchants.find((m) => m.id === id),
     [state.merchants],
@@ -492,6 +708,7 @@ export function GapGelProvider({ children }) {
   const placeOrder = (opts = {}) => {
     if (!state.cart.merchantId || state.cart.items.length === 0) return null;
     const merchant = findMerchant(state.cart.merchantId);
+    const customer = findCustomer(state.currentCustomerId);
     const items = state.cart.items.map((i) => {
       const p = findProduct(state.cart.merchantId, i.productId);
       return {
@@ -507,6 +724,24 @@ export function GapGelProvider({ children }) {
     const discount = opts.discount || 0;
     const total = +(Math.max(0, subtotal - discount) + deliveryFee).toFixed(2);
     const orderId = `HADE-${state.orderSeq + 1}`;
+    // Resolve address snapshot
+    const addrList = customer?.addresses || [];
+    const chosen =
+      addrList.find((a) => a.id === opts.addressId) ||
+      addrList.find((a) => a.isDefault) ||
+      addrList[0] ||
+      null;
+    const addressSnapshot = chosen
+      ? {
+          id: chosen.id,
+          label: chosen.label,
+          line: chosen.line,
+          district: chosen.district,
+          notes: opts.addressNotes ?? chosen.notes ?? "",
+        }
+      : customer?.address
+        ? { id: null, label: "Adres", line: customer.address, district: "", notes: opts.addressNotes || "" }
+        : null;
     dispatch({
       type: "ORDER_CREATE",
       items,
@@ -517,6 +752,7 @@ export function GapGelProvider({ children }) {
       total,
       merchantId: merchant.id,
       selfDelivery: isSelfDeliveryMerchant(merchant),
+      addressSnapshot,
     });
     return orderId;
   };
@@ -524,12 +760,8 @@ export function GapGelProvider({ children }) {
   const payOrder = (orderId) => {
     // created -> paid
     dispatch({ type: "ORDER_TRANSITION", orderId, to: "paid" });
-    // Fire merchant toast asynchronously
-    setTimeout(() => {
-      toast.success("Yeni ödenmiş sipariş alındı!", {
-        description: `Sipariş ${orderId} mağaza onayını bekliyor.`,
-      });
-    }, 50);
+    // (Customer-facing toast is handled centrally by the status-change effect.
+    //  Merchant push notification will be added in Batch 2.)
   };
 
   const merchantAccept = (orderId) => {
@@ -559,9 +791,29 @@ export function GapGelProvider({ children }) {
     dispatch({ type: "ORDER_TRANSITION", orderId, to: "ready" });
     // Auto-dispatch (only for non-self-delivery)
     if (!order.selfDelivery) {
-      const idle = state.couriers.find(
-        (c) => c.status === "idle" && c.online !== false,
+      const merchant = findMerchant(order.merchantId);
+      const mode = merchant?.deliveryMode || "platform_only";
+      // Filter eligible couriers based on merchant's delivery mode
+      const isEligibleType = (c) => {
+        if (mode === "platform_only") return c.courierType !== "merchant";
+        if (mode === "merchant_only")
+          return c.courierType === "merchant" && c.merchantId === merchant.id;
+        // hybrid: platform OR own merchant courier
+        return (
+          c.courierType !== "merchant" ||
+          (c.courierType === "merchant" && c.merchantId === merchant.id)
+        );
+      };
+      const eligible = state.couriers.filter(
+        (c) => c.status === "idle" && c.online !== false && isEligibleType(c),
       );
+      // Prefer merchant's own courier in hybrid mode
+      const idle =
+        mode === "hybrid"
+          ? eligible.find(
+              (c) => c.courierType === "merchant" && c.merchantId === merchant.id,
+            ) || eligible[0]
+          : eligible[0];
       if (idle) {
         dispatch({
           type: "ORDER_ASSIGN_COURIER",
@@ -927,6 +1179,102 @@ export function GapGelProvider({ children }) {
     dispatch({ type: "TOGGLE_COURIER_ONLINE", courierId, online });
   };
 
+  // --- Address actions ---
+  const addAddress = (customerId, address) => {
+    const id = `addr-${customerId}-${Date.now()}`;
+    dispatch({
+      type: "ADD_ADDRESS",
+      customerId,
+      address: { ...address, id, isDefault: !!address.isDefault },
+    });
+    if (address.isDefault) {
+      dispatch({ type: "SET_DEFAULT_ADDRESS", customerId, addressId: id });
+    }
+    toast.success("Adres eklendi");
+  };
+  const removeAddress = (customerId, addressId) => {
+    dispatch({ type: "REMOVE_ADDRESS", customerId, addressId });
+    toast.info("Adres silindi");
+  };
+  const setDefaultAddress = (customerId, addressId) => {
+    dispatch({ type: "SET_DEFAULT_ADDRESS", customerId, addressId });
+    toast.success("Varsayılan adres güncellendi");
+  };
+  const updateAddress = (customerId, addressId, patch) => {
+    dispatch({ type: "UPDATE_ADDRESS", customerId, addressId, patch });
+  };
+
+  // --- Merchant onboarding ---
+  const submitMerchantApplication = (data) => {
+    const id = `m-${Date.now()}`;
+    const merchant = {
+      id,
+      name: data.name,
+      type: data.type, // market/water/gas
+      deliveryMode: data.deliveryMode || "platform_only",
+      approvalStatus: "pending",
+      rating: 0,
+      delivery: data.deliveryWindow || "20–35 dk",
+      image: data.image || "",
+      tagline: data.tagline || "",
+      address: data.address || "",
+      products: [],
+      featured: false,
+      onboardedAt: new Date().toISOString(),
+      docs: data.docs || {},
+    };
+    dispatch({ type: "ADD_MERCHANT", merchant });
+    toast.success("Başvurunuz alındı! Yönetici onayı bekleniyor.");
+    return id;
+  };
+
+  // --- Courier onboarding ---
+  const submitCourierApplication = (data) => {
+    const id = `co-${Date.now()}`;
+    const courier = {
+      id,
+      name: data.name,
+      vehicle: data.vehicle || "Motosiklet",
+      status: "idle",
+      online: false,
+      courierType: data.courierType || "platform",
+      merchantId: data.merchantId || null,
+      approvalStatus: "pending",
+      phone: data.phone || "",
+      idDocument: data.idDocument || "",
+      onboardedAt: new Date().toISOString(),
+    };
+    dispatch({ type: "ADD_COURIER", courier });
+    toast.success("Başvurunuz alındı! Yönetici onayı bekleniyor.");
+    return id;
+  };
+  const setCourierApproval = (courierId, approvalStatus) => {
+    dispatch({ type: "SET_COURIER_APPROVAL", courierId, approvalStatus });
+    toast.success(
+      approvalStatus === "approved"
+        ? "Kurye onaylandı"
+        : approvalStatus === "suspended"
+          ? "Kurye askıya alındı"
+          : "Kurye durumu güncellendi",
+    );
+  };
+
+  // --- Disputes ---
+  const openDispute = (orderId, reason, message) => {
+    dispatch({ type: "OPEN_DISPUTE", orderId, reason, message });
+    toast.info("Şikayetiniz alındı — yönetici inceleyecek.");
+  };
+  const resolveDispute = (orderId, resolution, refundAmount, note) => {
+    dispatch({
+      type: "RESOLVE_DISPUTE",
+      orderId,
+      resolution,
+      refundAmount: refundAmount || 0,
+      note,
+    });
+    toast.success(`Şikayet çözümlendi: ${resolution}`);
+  };
+
   // Composite Merchant Health Score (0-100)
   const merchantHealthScore = useCallback(
     (merchantId) => {
@@ -1120,6 +1468,15 @@ export function GapGelProvider({ children }) {
     setMerchantDeliveryMode,
     setProductStock,
     toggleCourierOnline,
+    addAddress,
+    removeAddress,
+    setDefaultAddress,
+    updateAddress,
+    submitMerchantApplication,
+    submitCourierApplication,
+    setCourierApproval,
+    openDispute,
+    resolveDispute,
     applyPromo,
     recentEvents,
     platformAnalytics,

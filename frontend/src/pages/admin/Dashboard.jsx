@@ -64,6 +64,8 @@ export default function AdminDashboard() {
     merchantHealthScore,
     setMerchantApproval,
     setMerchantDeliveryMode,
+    setCourierApproval,
+    resolveDispute,
     platformAnalytics,
     recentEvents,
   } = useGapGel();
@@ -72,6 +74,8 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState("");
   const [refundOrderId, setRefundOrderId] = useState(null);
   const refundOrder = state.orders.find((o) => o.id === refundOrderId);
+  const [resolveDialog, setResolveDialog] = useState(null); // {orderId}
+  const [resolveForm, setResolveForm] = useState({ resolution: "refund_full", refundAmount: 0, note: "" });
 
   const filtered = useMemo(() => {
     return state.orders.filter((o) => {
@@ -369,6 +373,271 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </div>
+
+        {/* Pending courier approvals */}
+        {state.couriers.some((c) => c.approvalStatus === "pending") && (
+          <div
+            className="mb-4 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/50 shadow-sm"
+            data-testid="admin-courier-approvals"
+          >
+            <div className="border-b border-amber-200 px-4 py-3 text-sm font-bold uppercase tracking-wide text-amber-700">
+              Onay bekleyen kuryeler
+            </div>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-amber-100/50 text-xs uppercase text-amber-800">
+                <tr>
+                  <th className="px-4 py-2">Ad</th>
+                  <th className="px-4 py-2">Araç</th>
+                  <th className="px-4 py-2">Tip</th>
+                  <th className="px-4 py-2">Telefon</th>
+                  <th className="px-4 py-2 text-right">İşlem</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-200">
+                {state.couriers
+                  .filter((c) => c.approvalStatus === "pending")
+                  .map((c) => (
+                    <tr
+                      key={c.id}
+                      data-testid={`pending-courier-row-${c.id}`}
+                    >
+                      <td className="px-4 py-2 font-semibold">{c.name}</td>
+                      <td className="px-4 py-2 text-xs">{c.vehicle}</td>
+                      <td className="px-4 py-2 text-xs">
+                        {c.courierType === "merchant" ? "Mağaza" : "Platform"}
+                      </td>
+                      <td className="px-4 py-2 text-xs text-gray-600">
+                        {c.phone || "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            onClick={() => setCourierApproval(c.id, "approved")}
+                            className="rounded-full bg-[#00C2A8] text-xs font-bold hover:bg-[#00A38D]"
+                            data-testid={`approve-courier-${c.id}`}
+                          >
+                            Onayla
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setCourierApproval(c.id, "rejected")}
+                            className="rounded-full border-red-200 text-xs font-bold text-red-600"
+                            data-testid={`reject-courier-${c.id}`}
+                          >
+                            Reddet
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Disputes panel */}
+        {(() => {
+          const disputed = state.orders.filter((o) => o.dispute);
+          const open = disputed.filter((o) => o.dispute.status === "open");
+          if (disputed.length === 0) return null;
+          return (
+            <div
+              className="mb-4 overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm"
+              data-testid="admin-disputes-panel"
+            >
+              <div className="flex items-center justify-between border-b border-[#E5E7EB] px-4 py-3">
+                <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-amber-700">
+                  <AlertTriangle className="h-4 w-4" />
+                  Şikayetler ve çözümler
+                </div>
+                <span
+                  className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700"
+                  data-testid="open-disputes-count"
+                >
+                  {open.length} açık · {disputed.length - open.length} çözüldü
+                </span>
+              </div>
+              <table className="w-full text-left text-sm">
+                <thead className="bg-[#F7F7FB] text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-4 py-2">Sipariş</th>
+                    <th className="px-4 py-2">Müşteri</th>
+                    <th className="px-4 py-2">Sebep</th>
+                    <th className="px-4 py-2">Mesaj</th>
+                    <th className="px-4 py-2">Durum</th>
+                    <th className="px-4 py-2 text-right">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E5E7EB]">
+                  {disputed.map((o) => (
+                    <tr
+                      key={o.id}
+                      data-testid={`dispute-row-${o.id}`}
+                    >
+                      <td className="px-4 py-2 font-bold text-[#6C3BFF]">
+                        {o.id}
+                      </td>
+                      <td className="px-4 py-2 text-xs">
+                        {findCustomer(o.customerId)?.name}
+                      </td>
+                      <td className="px-4 py-2 text-xs">
+                        {o.dispute.reason}
+                      </td>
+                      <td className="px-4 py-2 text-xs text-gray-600 max-w-[260px] truncate">
+                        "{o.dispute.message}"
+                      </td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                            o.dispute.status === "open"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {o.dispute.status === "open" ? "Açık" : "Çözüldü"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {o.dispute.status === "open" ? (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setResolveDialog({ orderId: o.id, total: o.total });
+                              setResolveForm({
+                                resolution: "refund_full",
+                                refundAmount: o.total,
+                                note: "",
+                              });
+                            }}
+                            className="rounded-full bg-[#6C3BFF] text-xs font-bold hover:bg-[#582CD6]"
+                            data-testid={`resolve-dispute-${o.id}`}
+                          >
+                            Çöz
+                          </Button>
+                        ) : (
+                          <span className="text-[11px] text-gray-500">
+                            {o.dispute.resolution}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+
+        {/* Resolve dispute modal */}
+        {resolveDialog && (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4"
+            onClick={() => setResolveDialog(null)}
+            data-testid="resolve-dispute-modal"
+          >
+            <div
+              className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="mb-3 text-lg font-bold">
+                Şikayeti çöz · {resolveDialog.orderId}
+              </h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                    Karar
+                  </label>
+                  <Select
+                    value={resolveForm.resolution}
+                    onValueChange={(v) => {
+                      const refund =
+                        v === "refund_full"
+                          ? resolveDialog.total
+                          : v === "refund_partial"
+                            ? +(resolveDialog.total / 2).toFixed(2)
+                            : 0;
+                      setResolveForm({
+                        ...resolveForm,
+                        resolution: v,
+                        refundAmount: refund,
+                      });
+                    }}
+                  >
+                    <SelectTrigger data-testid="resolve-resolution">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="refund_full">Tam iade</SelectItem>
+                      <SelectItem value="refund_partial">Kısmi iade</SelectItem>
+                      <SelectItem value="no_refund">İade yok</SelectItem>
+                      <SelectItem value="reorder_voucher">
+                        Yeni sipariş kuponu
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                    İade tutarı ($)
+                  </label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={resolveForm.refundAmount}
+                    onChange={(e) =>
+                      setResolveForm({
+                        ...resolveForm,
+                        refundAmount: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    disabled={resolveForm.resolution === "no_refund"}
+                    data-testid="resolve-refund-amount"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                    Yönetici notu
+                  </label>
+                  <Input
+                    value={resolveForm.note}
+                    onChange={(e) =>
+                      setResolveForm({ ...resolveForm, note: e.target.value })
+                    }
+                    placeholder="Müşteriye iletilecek not"
+                    data-testid="resolve-note"
+                  />
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => setResolveDialog(null)}
+                  data-testid="resolve-dialog-cancel"
+                >
+                  İptal
+                </Button>
+                <Button
+                  className="rounded-full bg-[#6C3BFF] hover:bg-[#582CD6]"
+                  onClick={() => {
+                    resolveDispute(
+                      resolveDialog.orderId,
+                      resolveForm.resolution,
+                      resolveForm.refundAmount,
+                      resolveForm.note,
+                    );
+                    setResolveDialog(null);
+                  }}
+                  data-testid="resolve-dialog-submit"
+                >
+                  Kararı kaydet
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Event feed */}
         <div

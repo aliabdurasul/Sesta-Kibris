@@ -1,13 +1,16 @@
 import React from "react";
 import { useGapGel } from "@/store/GapGelContext";
-import { Bike, DollarSign, TrendingUp, Calendar, Power } from "lucide-react";
+import { Bike, DollarSign, TrendingUp, Calendar, Power, Building2, Globe } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { COURIER_TYPE_LABELS } from "@/data/seed";
 
 export default function CourierProfile() {
-  const { state, findCourier, courierEarnings, toggleCourierOnline } = useGapGel();
+  const { state, findCourier, findMerchant, courierEarnings, toggleCourierOnline } = useGapGel();
   const me = findCourier(state.currentCourierId);
   const earn = courierEarnings(me.id);
   const online = me.online !== false;
+  const isMerchantCourier = me.courierType === "merchant";
+  const linkedMerchant = isMerchantCourier && me.merchantId ? findMerchant(me.merchantId) : null;
 
   const myOrders = state.orders.filter((o) => o.courierId === me.id);
   const completed = myOrders.filter((o) => o.status === "delivered").length;
@@ -42,6 +45,19 @@ export default function CourierProfile() {
               data-testid="courier-online-toggle"
             />
           </div>
+        </div>
+        {/* Courier type badge */}
+        <div
+          className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+            isMerchantCourier
+              ? "bg-[#6C3BFF]/10 text-[#582CD6]"
+              : "bg-[#00C2A8]/10 text-[#00A38D]"
+          }`}
+          data-testid="courier-type-badge"
+        >
+          {isMerchantCourier ? <Building2 className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+          {COURIER_TYPE_LABELS[me.courierType] || "Platform"}
+          {linkedMerchant && ` · ${linkedMerchant.name}`}
         </div>
         <div
           className={`mt-2 text-[11px] font-semibold ${online ? "text-[#00A38D]" : "text-amber-700"}`}
