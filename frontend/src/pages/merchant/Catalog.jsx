@@ -60,19 +60,19 @@ export default function MerchantCatalog() {
   const handleAdd = () => {
     const price = Number(newPrice);
     if (!newName.trim() || !isFinite(price) || price <= 0) {
-      toast.error("Provide a name and a positive price");
+      toast.error("Ürün adı ve pozitif fiyat girin");
       return;
     }
     addProduct(merchant.id, { name: newName.trim(), price: +price.toFixed(2) });
     setNewName("");
     setNewPrice("");
-    toast.success("Product added");
+    toast.success("Ürün eklendi");
   };
 
   const handleEditSave = (pid) => {
     const price = Number(editPrice);
     if (!editName.trim() || !isFinite(price) || price <= 0) {
-      toast.error("Invalid name or price");
+      toast.error("Geçersiz ad veya fiyat");
       return;
     }
     updateProduct(merchant.id, pid, {
@@ -80,16 +80,16 @@ export default function MerchantCatalog() {
       price: +price.toFixed(2),
     });
     setEditingId(null);
-    toast.success("Product updated");
+    toast.success("Ürün güncellendi");
   };
 
   const handleBulkImport = () => {
     if (parsedPreview.length === 0) {
-      toast.error("No valid rows found");
+      toast.error("Geçerli satır bulunamadı");
       return;
     }
     bulkAddProducts(merchant.id, parsedPreview);
-    toast.success(`Imported ${parsedPreview.length} products`);
+    toast.success(`${parsedPreview.length} ürün yüklendi`);
     setBulkText("");
     setBulkOpen(false);
   };
@@ -222,7 +222,7 @@ export default function MerchantCatalog() {
                             className="rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
                             data-testid={`catalog-save-${p.id}`}
                           >
-                            Save
+                            Kaydet
                           </Button>
                           <Button
                             size="sm"
@@ -230,7 +230,7 @@ export default function MerchantCatalog() {
                             onClick={() => setEditingId(null)}
                             className="rounded-full"
                           >
-                            Cancel
+                            Vazgeç
                           </Button>
                         </div>
                       ) : (
@@ -253,7 +253,7 @@ export default function MerchantCatalog() {
                             variant="outline"
                             onClick={() => {
                               deleteProduct(merchant.id, p.id);
-                              toast.success("Product removed");
+                              toast.success("Ürün silindi");
                             }}
                             className="rounded-full border-red-200 text-red-600 hover:bg-red-50"
                             data-testid={`catalog-delete-${p.id}`}
@@ -275,16 +275,17 @@ export default function MerchantCatalog() {
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Upload className="h-4 w-4" /> Bulk import products
+              <Upload className="h-4 w-4" /> Toplu ürün yükle
             </DialogTitle>
             <DialogDescription>
-              Add many products at once via CSV paste or file upload.
+              CSV yapıştırarak veya dosya yükleyerek aynı anda çok sayıda ürün
+              ekleyin.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-gray-500">
-              Paste rows like <code>name,price</code> (one per line) or upload a
-              CSV file. Header row optional.
+              Her satır <code>ad,fiyat</code> şeklinde olsun (her satıra bir
+              ürün) ya da CSV dosyası yükleyin. Başlık satırı opsiyoneldir.
             </p>
             <input
               type="file"
@@ -296,12 +297,12 @@ export default function MerchantCatalog() {
             <Textarea
               value={bulkText}
               onChange={(e) => setBulkText(e.target.value)}
-              placeholder={"Rice (5kg), 12.50\nMilk 1L, 2.2\nEggs 12-pack, 5.5"}
+              placeholder={"Pirinç (5kg), 12.50\nSüt 1L, 2.2\nYumurta 12'li, 5.5"}
               className="h-48 rounded-xl border-[#E5E7EB] font-mono text-xs"
               data-testid="catalog-bulk-textarea"
             />
             <div className="rounded-xl bg-[#F7F7FB] p-3 text-xs text-gray-600">
-              <strong>{parsedPreview.length}</strong> valid rows detected.
+              <strong>{parsedPreview.length}</strong> geçerli satır bulundu.
             </div>
           </div>
           <DialogFooter>
@@ -310,14 +311,14 @@ export default function MerchantCatalog() {
               onClick={() => setBulkOpen(false)}
               className="rounded-full"
             >
-              Cancel
+              Vazgeç
             </Button>
             <Button
               onClick={handleBulkImport}
               className="rounded-full bg-[#6C3BFF] font-bold hover:bg-[#582CD6]"
               data-testid="catalog-bulk-confirm"
             >
-              Import {parsedPreview.length} products
+              {parsedPreview.length} ürün yükle
             </Button>
           </DialogFooter>
         </DialogContent>

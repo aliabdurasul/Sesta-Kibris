@@ -10,14 +10,14 @@ export const ORDER_STATES = [
 ];
 
 export const STATE_LABELS = {
-  created: "Created",
-  paid: "Paid",
-  accepted: "Accepted",
-  preparing: "Preparing",
-  ready: "Ready",
-  out_for_delivery: "Out for delivery",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
+  created: "Oluşturuldu",
+  paid: "Ödendi",
+  accepted: "Kabul edildi",
+  preparing: "Hazırlanıyor",
+  ready: "Hazır",
+  out_for_delivery: "Yolda",
+  delivered: "Teslim edildi",
+  cancelled: "İptal edildi",
 };
 
 export function stateIndex(s) {

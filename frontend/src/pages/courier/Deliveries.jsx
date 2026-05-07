@@ -41,7 +41,7 @@ function DeliveryCard({
     >
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-xs text-gray-500">Delivery</div>
+          <div className="text-xs text-gray-500">Teslimat</div>
           <div className="text-base font-extrabold">{order.id}</div>
         </div>
         <StatusBadge status={order.status} />
@@ -54,7 +54,7 @@ function DeliveryCard({
           </div>
           <div className="min-w-0">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-              Pickup
+              Teslim alma
             </div>
             <div className="truncate font-semibold">{merchant?.name}</div>
             <div className="truncate text-xs text-gray-500">
@@ -68,7 +68,7 @@ function DeliveryCard({
           </div>
           <div className="min-w-0">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-              Drop-off
+              Teslim noktası
             </div>
             <div className="truncate font-semibold">{customer?.name}</div>
             <div className="truncate text-xs text-gray-500">
@@ -80,15 +80,14 @@ function DeliveryCard({
 
       <div className="mt-3 flex items-center justify-between text-xs font-semibold text-gray-500">
         <span>
-          {order.items.length} item{order.items.length > 1 ? "s" : ""} · $
-          {order.total.toFixed(2)}
+          {order.items.length} ürün · ${order.total.toFixed(2)}
         </span>
         <a
           href={`tel:${customer?.phone || ""}`}
           className="tap inline-flex items-center gap-1 rounded-full bg-[#00C2A8]/10 px-3 py-1 text-[#00A38D]"
           data-testid={`courier-call-${order.id}`}
         >
-          <Phone className="h-3 w-3" /> Call
+          <Phone className="h-3 w-3" /> Ara
         </a>
       </div>
 
@@ -99,7 +98,7 @@ function DeliveryCard({
             className="tap h-12 w-full rounded-full bg-[#6C3BFF] font-bold hover:bg-[#582CD6]"
             data-testid={`courier-pickup-${order.id}`}
           >
-            <Truck className="mr-2 h-4 w-4" /> Picked Up
+            <Truck className="mr-2 h-4 w-4" /> Teslim alındı
           </Button>
         )}
         {isOut &&
@@ -109,7 +108,7 @@ function DeliveryCard({
               className="tap h-12 w-full rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
               data-testid={`courier-deliver-${order.id}`}
             >
-              <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Delivered
+              <CheckCircle2 className="mr-2 h-4 w-4" /> Teslim edildi
             </Button>
           ) : (
             <Button
@@ -117,12 +116,12 @@ function DeliveryCard({
               className="tap h-12 w-full rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
               data-testid={`courier-otp-${order.id}`}
             >
-              <ShieldCheck className="mr-2 h-4 w-4" /> Enter OTP to deliver
+              <ShieldCheck className="mr-2 h-4 w-4" /> Teslim için OTP gir
             </Button>
           ))}
         {!isReady && !isOut && (
           <div className="text-center text-xs font-semibold text-emerald-600">
-            Completed
+            Tamamlandı
           </div>
         )}
       </div>
@@ -153,29 +152,31 @@ export default function CourierDeliveries() {
     <div className="gg-rise px-4 pb-28 pt-4" data-testid="courier-deliveries">
       <div className="mb-4 rounded-2xl bg-gradient-to-r from-[#6C3BFF] to-[#4620B5] p-4 text-white shadow-md">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase opacity-90">
-          <Bike className="h-4 w-4" /> Courier
+          <Bike className="h-4 w-4" /> Kurye
         </div>
         <div className="mt-1 text-xl font-extrabold">{me?.name}</div>
         <div className="mt-0.5 text-xs opacity-90">
-          {me?.vehicle} · currently{" "}
-          <span className="font-bold">{me?.status}</span>
+          {me?.vehicle} · şu an{" "}
+          <span className="font-bold">
+            {me?.status === "idle" ? "boşta" : "meşgul"}
+          </span>
         </div>
       </div>
 
-      <h1 className="mb-3 text-lg font-extrabold">Active deliveries</h1>
+      <h1 className="mb-3 text-lg font-extrabold">Aktif teslimatlar</h1>
 
       {active.length === 0 ? (
         <div className="grid place-items-center rounded-2xl border border-[#E5E7EB] bg-white p-6 text-center shadow-sm">
           <div className="h-40 w-40 overflow-hidden rounded-2xl">
             <img
               src={EMPTY_IMAGES.courier}
-              alt="Idle"
+              alt="Boş"
               className="h-full w-full object-cover"
             />
           </div>
-          <h2 className="mt-3 text-base font-bold">No active deliveries</h2>
+          <h2 className="mt-3 text-base font-bold">Aktif teslimat yok</h2>
           <p className="mt-1 text-xs text-gray-500">
-            You'll be auto-assigned when a merchant marks an order Ready.
+            Mağaza siparişi "Hazır" yaptığında otomatik atanacaksınız.
           </p>
         </div>
       ) : (

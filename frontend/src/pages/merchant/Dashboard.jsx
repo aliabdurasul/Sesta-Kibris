@@ -23,6 +23,7 @@ import {
 import StatusBadge from "@/components/StatusBadge";
 import { isSelfDeliveryMerchant } from "@/lib/orderMachine";
 import MerchantCatalog from "@/pages/merchant/Catalog";
+import MerchantRatings from "@/pages/merchant/Ratings";
 import SubstitutionDialog from "@/components/SubstitutionDialog";
 
 function OrderCard({ order, merchant, customer, onCallCustomer, onSuggestSwap, actions }) {
@@ -33,7 +34,7 @@ function OrderCard({ order, merchant, customer, onCallCustomer, onSuggestSwap, a
     >
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-xs text-gray-500">Order · {customer?.name}</div>
+          <div className="text-xs text-gray-500">Sipariş · {customer?.name}</div>
           <div className="text-base font-extrabold">{order.id}</div>
         </div>
         <StatusBadge status={order.status} />
@@ -54,16 +55,16 @@ function OrderCard({ order, merchant, customer, onCallCustomer, onSuggestSwap, a
       </ul>
       {order.substitution && (
         <div className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] font-semibold text-amber-800">
-          Substitution: "{order.substitution.message}"{" "}
+          Değişiklik: "{order.substitution.message}"{" "}
           {order.substitution.accepted == null
-            ? "(awaiting customer)"
+            ? "(müşteri yanıtı bekleniyor)"
             : order.substitution.accepted
-              ? "✓ accepted"
-              : "✗ declined"}
+              ? "✓ kabul edildi"
+              : "✗ reddedildi"}
         </div>
       )}
       <div className="mt-3 flex items-center justify-between border-t border-dashed border-gray-200 pt-3 text-sm">
-        <span className="text-gray-500">Total</span>
+        <span className="text-gray-500">Toplam</span>
         <span className="text-lg font-extrabold">
           ${order.total.toFixed(2)}
         </span>
@@ -71,8 +72,8 @@ function OrderCard({ order, merchant, customer, onCallCustomer, onSuggestSwap, a
       {merchant && (
         <div className="mt-1 text-xs text-gray-500">
           {isSelfDeliveryMerchant(merchant)
-            ? "Self-delivery (water/gas)"
-            : "Dispatched via courier network"}
+            ? "Mağaza teslim eder (su/tüp)"
+            : "Kurye ağı üzerinden gönderilir"}
         </div>
       )}
       {customer && (
@@ -83,7 +84,7 @@ function OrderCard({ order, merchant, customer, onCallCustomer, onSuggestSwap, a
             data-testid={`merchant-call-${order.id}`}
           >
             <Phone className="h-3 w-3" />
-            Call customer
+            Müşteriyi ara
           </a>
           {onSuggestSwap && !["delivered", "cancelled"].includes(order.status) && (
             <button
@@ -92,7 +93,7 @@ function OrderCard({ order, merchant, customer, onCallCustomer, onSuggestSwap, a
               data-testid={`merchant-suggest-${order.id}`}
             >
               <MessageSquareWarning className="h-3 w-3" />
-              Suggest swap
+              Değişiklik öner
             </button>
           )}
         </div>
@@ -162,7 +163,7 @@ export default function MerchantDashboard() {
       <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-[#6C3BFF]">
-            <Store className="h-4 w-4" /> Merchant panel
+            <Store className="h-4 w-4" /> Satıcı paneli
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
             {merchant?.name}
@@ -174,25 +175,25 @@ export default function MerchantDashboard() {
         <div className="grid grid-cols-2 gap-2 md:w-[520px] md:grid-cols-4">
           <Metric
             icon={Package}
-            label="Orders"
+            label="Sipariş"
             value={metrics.total}
             color="#6C3BFF"
           />
           <Metric
             icon={Timer}
-            label="In flight"
+            label="Aktif"
             value={metrics.inFlight}
             color="#00C2A8"
           />
           <Metric
             icon={DollarSign}
-            label="Revenue"
+            label="Ciro"
             value={`$${metrics.revenue}`}
             color="#1A1A1A"
           />
           <Metric
             icon={TrendingUp}
-            label="Confirm rate"
+            label="Onay oranı"
             value={confRate.rate == null ? "—" : `${confRate.rate}%`}
             color="#FF3B30"
           />
@@ -206,21 +207,21 @@ export default function MerchantDashboard() {
             className="rounded-full px-5 data-[state=active]:bg-[#6C3BFF] data-[state=active]:text-white"
             data-testid="tab-new"
           >
-            New ({buckets.newOnes.length})
+            Yeni ({buckets.newOnes.length})
           </TabsTrigger>
           <TabsTrigger
             value="preparing"
             className="rounded-full px-5 data-[state=active]:bg-[#6C3BFF] data-[state=active]:text-white"
             data-testid="tab-preparing"
           >
-            Preparing ({buckets.preparing.length})
+            Hazırlanan ({buckets.preparing.length})
           </TabsTrigger>
           <TabsTrigger
             value="ready"
             className="rounded-full px-5 data-[state=active]:bg-[#6C3BFF] data-[state=active]:text-white"
             data-testid="tab-ready"
           >
-            Ready ({buckets.ready.length})
+            Hazır ({buckets.ready.length})
           </TabsTrigger>
           <TabsTrigger
             value="catalog"
@@ -228,13 +229,20 @@ export default function MerchantDashboard() {
             data-testid="tab-catalog"
           >
             <Layers className="mr-1.5 h-3.5 w-3.5" />
-            Catalog ({merchant?.products.length || 0})
+            Katalog ({merchant?.products.length || 0})
+          </TabsTrigger>
+          <TabsTrigger
+            value="ratings"
+            className="rounded-full px-5 data-[state=active]:bg-[#6C3BFF] data-[state=active]:text-white"
+            data-testid="tab-ratings"
+          >
+            Yorumlar
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="new" className="mt-5">
           <Grid>
-            {buckets.newOnes.length === 0 && <Empty label="No new orders" />}
+            {buckets.newOnes.length === 0 && <Empty label="Yeni sipariş yok" />}
             {buckets.newOnes.map((o) => (
               <OrderCard
                 key={o.id}
@@ -244,7 +252,7 @@ export default function MerchantDashboard() {
                 actions={
                   o.status === "created" ? (
                     <div className="text-xs font-semibold text-amber-600">
-                      Awaiting customer payment…
+                      Müşteri ödemesi bekleniyor…
                     </div>
                   ) : (
                     <>
@@ -253,7 +261,7 @@ export default function MerchantDashboard() {
                         className="tap h-11 flex-1 rounded-full bg-[#6C3BFF] font-bold hover:bg-[#582CD6]"
                         data-testid={`accept-${o.id}`}
                       >
-                        <CheckCircle2 className="mr-1.5 h-4 w-4" /> Accept
+                        <CheckCircle2 className="mr-1.5 h-4 w-4" /> Kabul et
                       </Button>
                       <Button
                         onClick={() => merchantReject(o.id)}
@@ -261,7 +269,7 @@ export default function MerchantDashboard() {
                         className="tap h-11 flex-1 rounded-full border-[#E5E7EB] font-bold text-red-600 hover:bg-red-50"
                         data-testid={`reject-${o.id}`}
                       >
-                        Reject
+                        Reddet
                       </Button>
                     </>
                   )
@@ -274,7 +282,7 @@ export default function MerchantDashboard() {
         <TabsContent value="preparing" className="mt-5">
           <Grid>
             {buckets.preparing.length === 0 && (
-              <Empty label="Nothing being prepared" />
+              <Empty label="Hazırlanan sipariş yok" />
             )}
             {buckets.preparing.map((o) => (
               <OrderCard
@@ -309,7 +317,7 @@ export default function MerchantDashboard() {
 
         <TabsContent value="ready" className="mt-5">
           <Grid>
-            {buckets.ready.length === 0 && <Empty label="Nothing ready yet" />}
+            {buckets.ready.length === 0 && <Empty label="Hazır sipariş yok" />}
             {buckets.ready.map((o) => (
               <OrderCard
                 key={o.id}
@@ -324,7 +332,7 @@ export default function MerchantDashboard() {
                         className="tap h-11 flex-1 rounded-full bg-[#6C3BFF] font-bold hover:bg-[#582CD6]"
                         data-testid={`self-dispatch-${o.id}`}
                       >
-                        <Truck className="mr-1.5 h-4 w-4" /> Dispatch (self)
+                        <Truck className="mr-1.5 h-4 w-4" /> Yola çık (kendim)
                       </Button>
                     ) : o.status === "out_for_delivery" ? (
                       <Button
@@ -332,18 +340,18 @@ export default function MerchantDashboard() {
                         className="tap h-11 flex-1 rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
                         data-testid={`self-deliver-${o.id}`}
                       >
-                        <CheckCircle2 className="mr-1.5 h-4 w-4" /> Mark
-                        Delivered
+                        <CheckCircle2 className="mr-1.5 h-4 w-4" /> Teslim
+                        edildi
                       </Button>
                     ) : (
                       <div className="text-xs font-semibold text-emerald-600">
-                        Delivered ✓
+                        Teslim edildi ✓
                       </div>
                     )
                   ) : (
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-[#00C2A8]">
                       <Bike className="h-4 w-4" />
-                      Awaiting courier pickup
+                      Kurye alımı bekleniyor
                     </div>
                   )
                 }
@@ -354,6 +362,10 @@ export default function MerchantDashboard() {
 
         <TabsContent value="catalog" className="mt-2">
           <MerchantCatalog />
+        </TabsContent>
+
+        <TabsContent value="ratings" className="mt-2">
+          <MerchantRatings />
         </TabsContent>
       </Tabs>
 

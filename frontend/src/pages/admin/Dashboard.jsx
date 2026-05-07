@@ -132,16 +132,17 @@ export default function AdminDashboard() {
           <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#6C3BFF] text-white">
             <Shield className="h-4 w-4" />
           </span>
-          Control Tower
+          Kontrol Kulesi
         </div>
         <nav className="space-y-1 text-sm">
-          <SideItem active icon={Activity} label="Orders" />
-          <SideItem icon={Store} label={`Merchants (${state.merchants.length})`} />
-          <SideItem icon={Bike} label={`Couriers (${state.couriers.length})`} />
-          <SideItem icon={Users} label={`Customers (${state.customers.length})`} />
+          <SideItem active icon={Activity} label="Siparişler" />
+          <SideItem icon={Store} label={`Mağazalar (${state.merchants.length})`} />
+          <SideItem icon={Bike} label={`Kuryeler (${state.couriers.length})`} />
+          <SideItem icon={Users} label={`Müşteriler (${state.customers.length})`} />
         </nav>
         <div className="mt-6 rounded-xl border border-dashed border-[#6C3BFF]/30 p-3 text-xs text-gray-500">
-          Admin can manually override any order state and force-assign couriers.
+          Yönetici tüm sipariş durumlarını manuel olarak değiştirebilir ve
+          kuryeleri zorla atayabilir.
         </div>
       </aside>
 
@@ -150,13 +151,13 @@ export default function AdminDashboard() {
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold text-[#6C3BFF]">
-              <Shield className="h-4 w-4" /> Admin
+              <Shield className="h-4 w-4" /> Yönetici
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
-              Live order console
+              Canlı sipariş konsolu
             </h1>
             <p className="text-sm text-gray-500">
-              Monitor every order across the hyperlocal network.
+              Hiperlokal ağdaki tüm siparişleri tek ekrandan yönetin.
             </p>
           </div>
           <Button
@@ -164,21 +165,21 @@ export default function AdminDashboard() {
             className="tap h-11 rounded-full bg-[#1A1A1A] px-5 font-bold text-white hover:bg-black"
             data-testid="admin-export-csv"
           >
-            <Download className="mr-2 h-4 w-4" /> Export CSV
+            <Download className="mr-2 h-4 w-4" /> CSV dışa aktar
           </Button>
         </div>
 
         {/* Metrics */}
         <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-          <MetricCard label="Total orders" value={metrics.total} accent="#6C3BFF" />
-          <MetricCard label="Active" value={metrics.active} accent="#00C2A8" />
+          <MetricCard label="Toplam sipariş" value={metrics.total} accent="#6C3BFF" />
+          <MetricCard label="Aktif" value={metrics.active} accent="#00C2A8" />
           <MetricCard
-            label="Idle couriers"
+            label="Boştaki kurye"
             value={`${metrics.idleCouriers}/${state.couriers.length}`}
             accent="#1A1A1A"
           />
           <MetricCard
-            label="Unassigned ready"
+            label="Atanmamış hazır"
             value={metrics.unassigned}
             accent="#FF3B30"
             warn={metrics.unassigned > 0}
@@ -195,7 +196,7 @@ export default function AdminDashboard() {
             data-testid="merchant-confirmation-rates"
           >
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#6C3BFF]">
-              Merchant confirmation rate
+              Mağaza onay oranı
             </div>
             <div className="space-y-2">
               {state.merchants.map((m) => {
@@ -219,7 +220,7 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <div className="text-[10px] text-gray-500">
-                      {r.accepted}/{r.decided} decided · {r.total} total
+                      {r.accepted}/{r.decided} karar · {r.total} toplam
                     </div>
                   </div>
                 );
@@ -233,7 +234,7 @@ export default function AdminDashboard() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
-              placeholder="Search order, merchant, courier…"
+              placeholder="Sipariş, mağaza, kurye ara…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 rounded-full border-[#E5E7EB] bg-[#F7F7FB] pl-10 text-sm"
@@ -248,7 +249,7 @@ export default function AdminDashboard() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="all">Tüm durumlar</SelectItem>
               {ORDER_STATES.map((s) => (
                 <SelectItem
                   key={s}
@@ -268,14 +269,14 @@ export default function AdminDashboard() {
             <table className="w-full text-left text-sm">
               <thead className="bg-[#F7F7FB] text-xs uppercase text-gray-500">
                 <tr>
-                  <th className="px-4 py-3">Order</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Merchant</th>
-                  <th className="px-4 py-3">Courier</th>
-                  <th className="px-4 py-3">Total</th>
-                  <th className="px-4 py-3">Refund</th>
-                  <th className="px-4 py-3 text-right">Controls</th>
+                  <th className="px-4 py-3">Sipariş</th>
+                  <th className="px-4 py-3">Durum</th>
+                  <th className="px-4 py-3">Müşteri</th>
+                  <th className="px-4 py-3">Mağaza</th>
+                  <th className="px-4 py-3">Kurye</th>
+                  <th className="px-4 py-3">Toplam</th>
+                  <th className="px-4 py-3">İade</th>
+                  <th className="px-4 py-3 text-right">Kontroller</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E7EB]">
@@ -285,7 +286,7 @@ export default function AdminDashboard() {
                       colSpan={8}
                       className="px-4 py-10 text-center text-sm text-gray-500"
                     >
-                      No orders yet. Place one from the Customer role.
+                      Henüz sipariş yok. Müşteri rolünden bir sipariş verin.
                     </td>
                   </tr>
                 )}
@@ -313,7 +314,7 @@ export default function AdminDashboard() {
                       <td className="px-4 py-3">
                         {o.selfDelivery ? (
                           <span className="text-xs font-semibold text-[#6C3BFF]">
-                            Self-delivery
+                            Mağaza teslim
                           </span>
                         ) : (
                           <Select
@@ -333,11 +334,11 @@ export default function AdminDashboard() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="unassigned">
-                                Unassigned
+                                Atanmamış
                               </SelectItem>
                               {state.couriers.map((c) => (
                                 <SelectItem key={c.id} value={c.id}>
-                                  {c.name} · {c.status}
+                                  {c.name} · {c.status === "idle" ? "boşta" : "meşgul"}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -369,7 +370,7 @@ export default function AdminDashboard() {
                             className="rounded-full border-[#E5E7EB] font-bold text-[#6C3BFF] disabled:opacity-40"
                             data-testid={`admin-refund-${o.id}`}
                           >
-                            <RotateCcw className="mr-1 h-3 w-3" /> Refund
+                            <RotateCcw className="mr-1 h-3 w-3" /> İade
                           </Button>
                           <Select
                             value={o.status}
@@ -384,7 +385,7 @@ export default function AdminDashboard() {
                             <SelectContent>
                               {[...ORDER_STATES, "cancelled"].map((s) => (
                                 <SelectItem key={s} value={s}>
-                                  Set: {STATE_LABELS[s] || s}
+                                  Ayarla: {STATE_LABELS[s] || s}
                                 </SelectItem>
                               ))}
                             </SelectContent>

@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Search, Star, Clock, Sparkles } from "lucide-react";
 import { useGapGel } from "@/store/GapGelContext";
+import { TYPE_LABELS } from "@/data/seed";
 
 const CHIPS = [
-  { key: "all", label: "All" },
+  { key: "all", label: "Hepsi" },
   { key: "market", label: "Market" },
-  { key: "water", label: "Water" },
-  { key: "gas", label: "Gas" },
+  { key: "water", label: "Su" },
+  { key: "gas", label: "Tüp" },
 ];
 
 export default function CustomerHome() {
@@ -35,10 +36,10 @@ export default function CustomerHome() {
       {/* Greeting */}
       <div className="mb-4">
         <h1 className="text-2xl font-extrabold tracking-tight">
-          Hey, what do you need today?
+          Merhaba, bugün ne lazım?
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Groceries, water, gas — delivered fast.
+          Market, su, tüp — hızlı teslimat.
         </p>
       </div>
 
@@ -48,7 +49,7 @@ export default function CustomerHome() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search merchants…"
+          placeholder="Mağaza ara…"
           className="h-12 rounded-full border-[#E5E7EB] bg-white pl-10 text-sm shadow-sm focus-visible:ring-[#6C3BFF]"
           data-testid="home-search-input"
         />
@@ -84,7 +85,7 @@ export default function CustomerHome() {
           <div className="mb-2 flex items-center gap-1.5">
             <Sparkles className="h-4 w-4 text-[#6C3BFF]" />
             <h2 className="text-sm font-bold uppercase tracking-wide text-gray-600">
-              Featured
+              Öne çıkanlar
             </h2>
           </div>
           <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4">
@@ -114,7 +115,7 @@ export default function CustomerHome() {
       {/* Merchants */}
       <section>
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-600">
-          Nearby
+          Yakındakiler
         </h2>
         <div className="space-y-3">
           {merchants.map((m) => (
@@ -135,7 +136,7 @@ export default function CustomerHome() {
                 <div className="flex items-center justify-between">
                   <div className="truncate text-base font-bold">{m.name}</div>
                   <span className="rounded-full bg-[#6C3BFF]/10 px-2 py-0.5 text-[10px] font-bold uppercase text-[#6C3BFF]">
-                    {m.type}
+                    {TYPE_LABELS[m.type] || m.type}
                   </span>
                 </div>
                 <div className="truncate text-xs text-gray-500">
@@ -156,7 +157,7 @@ export default function CustomerHome() {
           ))}
           {merchants.length === 0 && (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
-              No merchants match your search.
+              Aramanızla eşleşen mağaza yok.
             </div>
           )}
         </div>

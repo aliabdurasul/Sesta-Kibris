@@ -50,26 +50,26 @@ export default function CustomerCart() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-xl font-extrabold">Your cart</h1>
+          <h1 className="text-xl font-extrabold">Sepetim</h1>
         </div>
         <div className="grid place-items-center rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
           <div className="h-40 w-40 overflow-hidden rounded-2xl">
             <img
               src={EMPTY_IMAGES.cart}
-              alt="Empty cart"
+              alt="Boş sepet"
               className="h-full w-full object-cover"
             />
           </div>
-          <h2 className="mt-4 text-lg font-bold">Your cart is empty</h2>
+          <h2 className="mt-4 text-lg font-bold">Sepetiniz boş</h2>
           <p className="mt-1 text-sm text-gray-500">
-            Add items from a merchant to get started.
+            Başlamak için bir mağazadan ürün ekleyin.
           </p>
           <Button
             onClick={() => navigate("/customer")}
             className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]"
             data-testid="empty-cart-browse-button"
           >
-            Browse merchants
+            Mağazalara göz at
           </Button>
         </div>
       </div>
@@ -86,11 +86,11 @@ export default function CustomerCart() {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-xl font-extrabold">Your cart</h1>
+        <h1 className="text-xl font-extrabold">Sepetim</h1>
       </div>
 
       <div className="mb-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm">
-        <div className="text-xs text-gray-500">Ordering from</div>
+        <div className="text-xs text-gray-500">Sipariş veriliyor</div>
         <div className="text-base font-bold">{merchant?.name}</div>
         <div className="text-xs text-gray-500">{merchant?.delivery}</div>
       </div>
@@ -148,18 +148,18 @@ export default function CustomerCart() {
       {/* Totals */}
       <div className="mt-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 text-sm shadow-sm">
         <div className="flex justify-between">
-          <span className="text-gray-500">Subtotal</span>
+          <span className="text-gray-500">Ara toplam</span>
           <span className="font-semibold" data-testid="cart-subtotal">
             ${subtotal.toFixed(2)}
           </span>
         </div>
         <div className="mt-1.5 flex justify-between">
-          <span className="text-gray-500">Delivery fee</span>
+          <span className="text-gray-500">Teslimat ücreti</span>
           <span className="font-semibold">${DELIVERY_FEE.toFixed(2)}</span>
         </div>
         <div className="mt-3 border-t border-dashed border-gray-200 pt-3">
           <div className="flex items-baseline justify-between">
-            <span className="font-bold">Total</span>
+            <span className="font-bold">Toplam</span>
             <span
               className="text-xl font-extrabold text-[#1A1A1A]"
               data-testid="cart-total"
@@ -178,7 +178,7 @@ export default function CustomerCart() {
           data-testid="pay-now-button"
         >
           <ShoppingCart className="mr-2 h-5 w-5" />
-          Pay Now · ${total.toFixed(2)}
+          Şimdi öde · ${total.toFixed(2)}
         </Button>
       </div>
     </div>

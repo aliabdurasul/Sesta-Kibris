@@ -9,7 +9,7 @@ export default function OrderTimeline({ status, cancelReason }) {
         className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"
         data-testid="order-timeline-cancelled"
       >
-        Order cancelled{cancelReason ? ` · ${cancelReason}` : ""}
+        Sipariş iptal edildi{cancelReason ? ` · ${cancelReason}` : ""}
       </div>
     );
   }
@@ -62,7 +62,7 @@ export default function OrderTimeline({ status, cancelReason }) {
                 {STATE_LABELS[s]}
               </div>
               {current && (
-                <div className="text-xs text-gray-500">In progress…</div>
+                <div className="text-xs text-gray-500">Devam ediyor…</div>
               )}
             </div>
           </li>

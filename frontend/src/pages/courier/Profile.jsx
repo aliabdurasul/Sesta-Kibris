@@ -12,7 +12,7 @@ export default function CourierProfile() {
 
   return (
     <div className="gg-rise px-4 pb-24 pt-4" data-testid="courier-profile">
-      <h1 className="mb-4 text-2xl font-extrabold">Profile</h1>
+      <h1 className="mb-4 text-2xl font-extrabold">Profil</h1>
       <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="grid h-14 w-14 place-items-center rounded-full bg-[#6C3BFF] text-white">
@@ -25,14 +25,14 @@ export default function CourierProfile() {
               <span
                 className={`font-bold ${me.status === "idle" ? "text-emerald-600" : "text-amber-600"}`}
               >
-                {me.status}
+                {me.status === "idle" ? "boşta" : "meşgul"}
               </span>
             </div>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <Stat label="Assigned" value={myOrders.length} />
-          <Stat label="Completed" value={completed} />
+          <Stat label="Atanan" value={myOrders.length} />
+          <Stat label="Tamamlanan" value={completed} />
         </div>
       </div>
 
@@ -42,7 +42,7 @@ export default function CourierProfile() {
         data-testid="courier-earnings"
       >
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#00A38D]">
-          <DollarSign className="h-3.5 w-3.5" /> Earnings
+          <DollarSign className="h-3.5 w-3.5" /> Kazanç
         </div>
         <div
           className="mt-1 text-3xl font-extrabold"
@@ -51,21 +51,21 @@ export default function CourierProfile() {
           ${earn.lifetime.toFixed(2)}
         </div>
         <div className="text-xs text-gray-500">
-          {earn.deliveries} deliveries · ${earn.feePerDelivery.toFixed(2)} per
-          delivery
+          {earn.deliveries} teslimat · teslimat başına $
+          {earn.feePerDelivery.toFixed(2)}
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <EarnTile
             icon={Calendar}
-            label="Today"
+            label="Bugün"
             money={earn.today}
-            sub={`${earn.todayDeliveries} drops`}
+            sub={`${earn.todayDeliveries} teslimat`}
           />
           <EarnTile
             icon={TrendingUp}
-            label="This week"
+            label="Bu hafta"
             money={earn.week}
-            sub={`${earn.weekDeliveries} drops`}
+            sub={`${earn.weekDeliveries} teslimat`}
           />
         </div>
       </div>

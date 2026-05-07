@@ -10,31 +10,31 @@ export default function BottomNav({ variant }) {
   const items =
     variant === "courier"
       ? [
-          { to: "/courier", label: "Deliveries", icon: Bike, end: true },
+          { to: "/courier", label: "Teslimatlar", icon: Bike, end: true },
           {
             to: "/courier/history",
-            label: "History",
+            label: "Geçmiş",
             icon: ClipboardList,
             end: false,
           },
           {
             to: "/courier/profile",
-            label: "Profile",
+            label: "Profil",
             icon: User,
             end: false,
           },
         ]
       : [
-          { to: "/customer", label: "Home", icon: Home, end: true },
+          { to: "/customer", label: "Ana sayfa", icon: Home, end: true },
           {
             to: "/customer/orders",
-            label: "Orders",
+            label: "Siparişler",
             icon: ClipboardList,
             end: false,
           },
           {
             to: "/customer/profile",
-            label: "Profile",
+            label: "Profil",
             icon: User,
             end: false,
           },
@@ -64,7 +64,7 @@ export default function BottomNav({ variant }) {
                 strokeWidth={active ? 2.4 : 2}
               />
               <span className="mt-0.5">{label}</span>
-              {variant !== "courier" && label === "Home" && cartCount > 0 && (
+              {variant !== "courier" && label === "Ana sayfa" && cartCount > 0 && (
                 <span
                   className="absolute right-4 top-1 min-w-[18px] rounded-full bg-[#00C2A8] px-1 text-[10px] font-bold leading-[18px] text-white"
                   data-testid="bottom-nav-cart-badge"

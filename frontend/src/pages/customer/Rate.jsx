@@ -44,14 +44,14 @@ export default function CustomerRate() {
   if (!order) {
     return (
       <div className="p-6 text-center text-sm text-gray-500">
-        Order not found.
+        Sipariş bulunamadı.
       </div>
     );
   }
   if (order.status !== "delivered") {
     return (
       <div className="p-6 text-center text-sm text-gray-500">
-        You can rate only after delivery.
+        Yalnızca teslimat sonrasında değerlendirebilirsiniz.
       </div>
     );
   }
@@ -67,7 +67,7 @@ export default function CustomerRate() {
       courierStars: courier ? courierStars : null,
       courierComment: courier ? courierComment.trim() : null,
     });
-    toast.success("Thanks for your feedback!");
+    toast.success("Geri bildiriminiz için teşekkürler!");
     navigate(`/customer/orders/${order.id}`);
   };
 
@@ -81,18 +81,18 @@ export default function CustomerRate() {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-xl font-extrabold">Rate your order</h1>
+        <h1 className="text-xl font-extrabold">Siparişi değerlendir</h1>
       </div>
 
       {alreadyRated && (
         <div className="mb-3 rounded-xl border border-[#00C2A8]/30 bg-[#00C2A8]/5 p-3 text-xs font-semibold text-[#00A38D]">
-          You already rated this order — submitting again will update your
-          rating.
+          Bu siparişi zaten değerlendirdiniz — tekrar göndermek mevcut
+          değerlendirmeyi günceller.
         </div>
       )}
 
       <section className="mb-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
-        <div className="text-xs text-gray-500">Merchant</div>
+        <div className="text-xs text-gray-500">Mağaza</div>
         <div className="text-base font-bold">{merchant?.name}</div>
         <div className="mt-3">
           <StarPicker
@@ -104,7 +104,7 @@ export default function CustomerRate() {
         <Textarea
           value={merchantComment}
           onChange={(e) => setMerchantComment(e.target.value)}
-          placeholder="Were items accurate and fresh?"
+          placeholder="Ürünler doğru ve taze miydi?"
           className="mt-3 h-20 rounded-xl border-[#E5E7EB] text-sm"
           data-testid="rate-merchant-comment"
         />
@@ -112,7 +112,7 @@ export default function CustomerRate() {
 
       {courier && (
         <section className="mb-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
-          <div className="text-xs text-gray-500">Courier</div>
+          <div className="text-xs text-gray-500">Kurye</div>
           <div className="text-base font-bold">
             {courier.name} · {courier.vehicle}
           </div>
@@ -126,7 +126,7 @@ export default function CustomerRate() {
           <Textarea
             value={courierComment}
             onChange={(e) => setCourierComment(e.target.value)}
-            placeholder="How was the delivery?"
+            placeholder="Teslimat nasıldı?"
             className="mt-3 h-20 rounded-xl border-[#E5E7EB] text-sm"
             data-testid="rate-courier-comment"
           />
@@ -138,7 +138,7 @@ export default function CustomerRate() {
         className="tap h-14 w-full rounded-full bg-[#6C3BFF] text-base font-bold hover:bg-[#582CD6]"
         data-testid="rate-submit-button"
       >
-        Submit rating
+        Değerlendirmeyi gönder
       </Button>
     </div>
   );

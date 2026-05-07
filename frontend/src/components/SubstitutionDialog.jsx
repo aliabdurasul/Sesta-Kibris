@@ -26,20 +26,19 @@ export default function SubstitutionDialog({ open, onOpenChange, onSend }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquareWarning className="h-4 w-4 text-amber-500" />
-            Suggest a substitution
+            Değişiklik öner
           </DialogTitle>
           <DialogDescription>
-            Customer will see this suggestion and can accept or decline.
+            Müşteri öneriyi sipariş sayfasında görür ve kabul/red eder.
           </DialogDescription>
         </DialogHeader>
         <p className="text-xs text-gray-500">
-          Customer will see this suggestion in their order page and can accept or
-          decline.
+          Stok dışı bir ürün için alternatif önerin.
         </p>
         <Textarea
           value={msg}
           onChange={(e) => setMsg(e.target.value)}
-          placeholder="Out of 1L milk — can we swap to 500ml × 2?"
+          placeholder="1L süt yok — 500ml × 2 olarak değiştirebilir miyiz?"
           className="h-28 rounded-xl border-[#E5E7EB] text-sm"
           data-testid="substitution-message"
         />
@@ -49,14 +48,14 @@ export default function SubstitutionDialog({ open, onOpenChange, onSend }) {
             onClick={() => onOpenChange(false)}
             className="rounded-full"
           >
-            Cancel
+            Vazgeç
           </Button>
           <Button
             onClick={handleSend}
             className="rounded-full bg-[#6C3BFF] font-bold hover:bg-[#582CD6]"
             data-testid="substitution-send"
           >
-            Send suggestion
+            Öneriyi gönder
           </Button>
         </DialogFooter>
       </DialogContent>

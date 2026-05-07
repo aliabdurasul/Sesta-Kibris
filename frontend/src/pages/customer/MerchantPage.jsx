@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useGapGel } from "@/store/GapGelContext";
 import { ArrowLeft, Plus, Minus, Star, Clock, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TYPE_LABELS } from "@/data/seed";
 
 export default function CustomerMerchant() {
   const { id } = useParams();
@@ -57,7 +58,7 @@ export default function CustomerMerchant() {
               {merchant.delivery}
             </span>
             <span className="rounded-full bg-[#00C2A8] px-2 py-0.5 text-[10px] uppercase">
-              {merchant.type}
+              {TYPE_LABELS[merchant.type] || merchant.type}
             </span>
           </div>
         </div>
@@ -67,12 +68,12 @@ export default function CustomerMerchant() {
       <div className="px-4 pt-4">
         {cartMerchantMismatch && (
           <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-            You have items from another merchant in your cart. Adding here will
-            replace it.
+            Sepetinizde başka bir mağazadan ürün var. Buradan eklerseniz sepet
+            yenilenecek.
           </div>
         )}
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-600">
-          Menu
+          Menü
         </h2>
         <div className="grid grid-cols-2 gap-3">
           {merchant.products.map((p) => {
@@ -149,7 +150,7 @@ export default function CustomerMerchant() {
             data-testid="view-cart-button"
           >
             <ShoppingCart className="mr-2 h-5 w-5" />
-            View cart · {cartCount} item{cartCount > 1 ? "s" : ""}
+            Sepeti gör · {cartCount} ürün
           </Button>
         </div>
       )}

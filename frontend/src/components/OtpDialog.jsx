@@ -51,10 +51,10 @@ export default function OtpDialog({ open, onOpenChange, expected, onVerified }) 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-[#00C2A8]" />
-            Confirm delivery OTP
+            Teslimat OTP'sini onayla
           </DialogTitle>
           <DialogDescription>
-            Ask the customer for their 4-digit code to complete the delivery.
+            Müşteriden 4 haneli kodunu isteyip girin.
           </DialogDescription>
         </DialogHeader>
         <div
@@ -82,7 +82,7 @@ export default function OtpDialog({ open, onOpenChange, expected, onVerified }) 
         </div>
         {error && (
           <div className="text-center text-xs font-semibold text-red-500">
-            Wrong code — ask the customer again.
+            Yanlış kod — müşteriden tekrar isteyin.
           </div>
         )}
         <Button
@@ -90,7 +90,7 @@ export default function OtpDialog({ open, onOpenChange, expected, onVerified }) 
           onClick={() => onOpenChange(false)}
           className="mt-2 w-full rounded-full"
         >
-          Cancel
+          Vazgeç
         </Button>
       </DialogContent>
     </Dialog>

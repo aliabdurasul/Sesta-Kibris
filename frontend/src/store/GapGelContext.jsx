@@ -39,8 +39,54 @@ const initialState = {
   orderSeq: 1000,
 };
 
+const STORAGE_KEY = "gapgel-state-v1";
+
+function loadInitial() {
+  try {
+    const raw =
+      typeof window !== "undefined" && window.localStorage
+        ? window.localStorage.getItem(STORAGE_KEY)
+        : null;
+    if (!raw) return initialState;
+    const saved = JSON.parse(raw);
+    // Defensive defaults for older shapes
+    const orders = Array.isArray(saved.orders)
+      ? saved.orders.map((o) => ({
+          otp: o.otp || String(Math.floor(1000 + Math.random() * 9000)),
+          otpVerified: !!o.otpVerified,
+          rating: o.rating ?? null,
+          refund: o.refund ?? null,
+          substitution: o.substitution ?? null,
+          acceptedAt: o.acceptedAt ?? null,
+          assignedAt: o.assignedAt ?? null,
+          cancelReason: o.cancelReason ?? null,
+          history: o.history ?? [],
+          ...o,
+        }))
+      : [];
+    return {
+      ...initialState,
+      ...saved,
+      orders,
+      // Always preserve the seed-driven shape if missing
+      merchants: saved.merchants ?? initialState.merchants,
+      couriers: saved.couriers ?? initialState.couriers,
+      customers: saved.customers ?? initialState.customers,
+      cart: saved.cart ?? initialState.cart,
+    };
+  } catch {
+    return initialState;
+  }
+}
+
 function reducer(state, action) {
   switch (action.type) {
+    case "RESET_DEMO":
+      return initialState;
+    case "REORDER_FROM_ORDER": {
+      const { merchantId, items } = action;
+      return { ...state, cart: { merchantId, items } };
+    }
     case "SET_ROLE":
       return { ...state, role: action.role };
     case "SET_CURRENT_MERCHANT":
@@ -343,7 +389,28 @@ function reducer(state, action) {
 }
 
 export function GapGelProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, undefined, loadInitial);
+
+  // Persist to localStorage whenever core state changes
+  useEffect(() => {
+    try {
+      const payload = {
+        role: state.role,
+        currentCustomerId: state.currentCustomerId,
+        currentMerchantId: state.currentMerchantId,
+        currentCourierId: state.currentCourierId,
+        merchants: state.merchants,
+        couriers: state.couriers,
+        customers: state.customers,
+        cart: state.cart,
+        orders: state.orders,
+        orderSeq: state.orderSeq,
+      };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [state]);
 
   const findMerchant = useCallback(
     (id) => state.merchants.find((m) => m.id === id),
@@ -374,7 +441,7 @@ export function GapGelProvider({ children }) {
 
   const cartAdd = (merchantId, productId) => {
     if (state.cart.merchantId && state.cart.merchantId !== merchantId) {
-      toast.info("Cart replaced — different merchant");
+      toast.info("Sepet değişti — farklı mağaza");
     }
     dispatch({ type: "CART_ADD", merchantId, productId });
   };
@@ -417,8 +484,8 @@ export function GapGelProvider({ children }) {
     dispatch({ type: "ORDER_TRANSITION", orderId, to: "paid" });
     // Fire merchant toast asynchronously
     setTimeout(() => {
-      toast.success("New paid order received!", {
-        description: `Order ${orderId} is awaiting merchant acceptance.`,
+      toast.success("Yeni ödenmiş sipariş alındı!", {
+        description: `Sipariş ${orderId} mağaza onayını bekliyor.`,
       });
     }, 50);
   };
@@ -427,7 +494,7 @@ export function GapGelProvider({ children }) {
     const order = state.orders.find((o) => o.id === orderId);
     if (!order) return;
     if (order.status !== "paid") {
-      toast.error("Cannot accept — order must be paid first");
+      toast.error("Kabul edilemez — önce ödeme alınmalı");
       return;
     }
     dispatch({ type: "ORDER_TRANSITION", orderId, to: "accepted" });
@@ -436,9 +503,9 @@ export function GapGelProvider({ children }) {
     dispatch({
       type: "ORDER_CANCEL",
       orderId,
-      reason: "rejected by merchant",
+      reason: "mağaza reddetti",
     });
-    toast.error("Order rejected — refund issued");
+    toast.error("Sipariş reddedildi — iade yapıldı");
   };
   const merchantStartPreparing = (orderId) =>
     dispatch({ type: "ORDER_TRANSITION", orderId, to: "preparing" });
@@ -502,18 +569,18 @@ export function GapGelProvider({ children }) {
     if (to === "delivered" && order.courierId) {
       dispatch({ type: "COURIER_FREE", courierId: order.courierId });
     }
-    toast.success(`Admin override → ${to}`);
+    toast.success(`Yönetici güncelledi → ${to}`);
   };
   const adminForceAssign = (orderId, courierId) => {
     dispatch({ type: "ADMIN_FORCE_ASSIGN", orderId, courierId });
     toast.success(
-      courierId ? "Admin assigned courier" : "Admin cleared courier",
+      courierId ? "Yönetici kurye atadı" : "Yönetici kurye kaldırdı",
     );
   };
 
   const adminApplyRefund = (orderId, amount, note) => {
     dispatch({ type: "APPLY_REFUND", orderId, amount, note });
-    toast.success(`Refunded $${amount.toFixed(2)}`);
+    toast.success(`$${amount.toFixed(2)} iade edildi`);
   };
 
   const cancelOrder = (orderId, reason) => {
@@ -525,11 +592,11 @@ export function GapGelProvider({ children }) {
     dispatch({ type: "SUBMIT_RATING", orderId, rating });
   const offerSubstitution = (orderId, message) => {
     dispatch({ type: "OFFER_SUBSTITUTION", orderId, message });
-    toast.success("Substitution suggestion sent to customer");
+    toast.success("Değişiklik önerisi müşteriye gönderildi");
   };
   const respondSubstitution = (orderId, accepted) => {
     dispatch({ type: "RESPOND_SUBSTITUTION", orderId, accepted });
-    toast.success(accepted ? "Substitution accepted" : "Substitution declined");
+    toast.success(accepted ? "Değişiklik kabul edildi" : "Değişiklik reddedildi");
   };
 
   // Product CRUD
@@ -598,12 +665,12 @@ export function GapGelProvider({ children }) {
           dispatch({
             type: "ORDER_CANCEL",
             orderId: o.id,
-            reason: "merchant did not respond",
+            reason: "mağaza yanıt vermedi",
           });
           setTimeout(
             () =>
               toast.error(
-                `Order ${o.id} auto-cancelled — merchant did not respond`,
+                `${o.id} otomatik iptal edildi — mağaza yanıt vermedi`,
               ),
             10,
           );
@@ -612,10 +679,10 @@ export function GapGelProvider({ children }) {
             dispatch({
               type: "ORDER_CANCEL",
               orderId: o.id,
-              reason: "merchant did not respond",
+              reason: "mağaza yanıt vermedi",
             });
             toast.error(
-              `Order ${o.id} auto-cancelled — merchant did not respond`,
+              `${o.id} otomatik iptal edildi — mağaza yanıt vermedi`,
             );
           }, rem);
           timersRef.current.push(t);
@@ -642,9 +709,9 @@ export function GapGelProvider({ children }) {
               fromCourierId: o.courierId,
               toCourierId: other.id,
             });
-            toast.warning(`Reassigned ${o.id} → ${other.name} (timeout)`);
+            toast.warning(`${o.id} yeniden atandı → ${other.name} (zaman aşımı)`);
           } else {
-            toast.warning(`No spare courier — ${o.id} still pending`);
+            toast.warning(`Yedek kurye yok — ${o.id} hâlâ bekliyor`);
           }
         };
         if (rem <= 0) {
@@ -708,6 +775,86 @@ export function GapGelProvider({ children }) {
     },
     [state.orders],
   );
+
+  // Per-merchant ratings summary
+  const merchantRatings = useCallback(
+    (merchantId) => {
+      const rated = state.orders.filter(
+        (o) => o.merchantId === merchantId && o.rating?.merchantStars,
+      );
+      const stars = rated.map((o) => o.rating.merchantStars);
+      const avg =
+        stars.length === 0
+          ? null
+          : +(stars.reduce((a, b) => a + b, 0) / stars.length).toFixed(2);
+      return {
+        avg,
+        count: rated.length,
+        reviews: rated
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(b.rating.at).getTime() - new Date(a.rating.at).getTime(),
+          )
+          .map((o) => ({
+            orderId: o.id,
+            stars: o.rating.merchantStars,
+            comment: o.rating.merchantComment,
+            customer: state.customers.find((c) => c.id === o.customerId)?.name,
+            at: o.rating.at,
+          })),
+      };
+    },
+    [state.orders, state.customers],
+  );
+
+  // Reorder from a previous (delivered) order
+  const reorderFromOrder = useCallback(
+    (orderId) => {
+      const order = state.orders.find((o) => o.id === orderId);
+      if (!order) return false;
+      const merchant = state.merchants.find((m) => m.id === order.merchantId);
+      if (!merchant) {
+        toast.error("Mağaza artık mevcut değil");
+        return false;
+      }
+      const valid = [];
+      const skipped = [];
+      for (const item of order.items) {
+        const stillExists = merchant.products.find(
+          (p) => p.id === item.productId,
+        );
+        if (stillExists) valid.push({ productId: item.productId, qty: item.qty });
+        else skipped.push(item.name);
+      }
+      if (valid.length === 0) {
+        toast.error("Bu siparişteki ürünler artık mevcut değil");
+        return false;
+      }
+      dispatch({
+        type: "REORDER_FROM_ORDER",
+        merchantId: order.merchantId,
+        items: valid,
+      });
+      if (skipped.length > 0) {
+        toast.warning(`${skipped.length} ürün atlandı (artık mevcut değil)`);
+      } else {
+        toast.success("Ürünler sepete eklendi");
+      }
+      return true;
+    },
+    [state.orders, state.merchants],
+  );
+
+  const resetDemo = useCallback(() => {
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+    dispatch({ type: "RESET_DEMO" });
+    toast.success("Demo sıfırlandı — başlangıç verisi yüklendi");
+  }, []);
 
   // ---- Derived: visible orders per role ----
   const visibleOrders = useMemo(() => {
@@ -778,6 +925,9 @@ export function GapGelProvider({ children }) {
     bulkAddProducts,
     courierEarnings,
     merchantConfirmationRate,
+    merchantRatings,
+    reorderFromOrder,
+    resetDemo,
     visibleOrders,
     cartCount,
   };

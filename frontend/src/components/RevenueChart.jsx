@@ -50,12 +50,12 @@ export default function RevenueChart({ orders }) {
       <div className="mb-3 flex items-baseline justify-between">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wide text-[#6C3BFF]">
-            Last 7 days
+            Son 7 gün
           </div>
-          <div className="text-lg font-extrabold">Revenue & orders</div>
+          <div className="text-lg font-extrabold">Ciro ve siparişler</div>
         </div>
         <div className="text-xs text-gray-500">
-          Revenue ${" "}
+          Ciro ${" "}
           <span className="font-bold text-[#1A1A1A]">
             {data.reduce((a, b) => a + b.revenue, 0).toFixed(2)}
           </span>
@@ -83,7 +83,7 @@ export default function RevenueChart({ orders }) {
                 fontSize: 12,
               }}
               formatter={(v, name) =>
-                name === "revenue" ? [`$${v}`, "Revenue"] : [v, "Orders"]
+                name === "revenue" ? [`$${v}`, "Ciro"] : [v, "Sipariş"]
               }
             />
             <Bar

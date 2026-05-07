@@ -21,7 +21,7 @@ export default function RefundDialog({ order, open, onOpenChange, onApply }) {
   const handleApply = () => {
     const v = Number(amount);
     if (!isFinite(v) || v <= 0 || v > max) {
-      toast.error(`Enter an amount between 0.01 and ${max.toFixed(2)}`);
+      toast.error(`0.01 ile ${max.toFixed(2)} arasında bir tutar girin`);
       return;
     }
     onApply(order.id, +v.toFixed(2), note.trim());
@@ -36,25 +36,25 @@ export default function RefundDialog({ order, open, onOpenChange, onApply }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Partial refund · {order.id}</DialogTitle>
+          <DialogTitle>Kısmi iade · {order.id}</DialogTitle>
           <DialogDescription>
-            Refund part or all of this order to the customer.
+            Bu siparişin tamamı veya bir kısmını müşteriye iade edin.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-xl bg-[#F7F7FB] p-3 text-xs text-gray-600">
-            Order total: <strong>${order.total.toFixed(2)}</strong>
+            Sipariş toplamı: <strong>${order.total.toFixed(2)}</strong>
             {alreadyRefunded > 0 && (
               <>
-                {" · "}Already refunded:{" "}
+                {" · "}İade edilen:{" "}
                 <strong>${alreadyRefunded.toFixed(2)}</strong>
               </>
             )}
-            {" · "}Refundable: <strong>${max.toFixed(2)}</strong>
+            {" · "}İade edilebilir: <strong>${max.toFixed(2)}</strong>
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-              Amount ($)
+              Tutar ($)
             </label>
             <Input
               type="number"
@@ -68,12 +68,12 @@ export default function RefundDialog({ order, open, onOpenChange, onApply }) {
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-              Reason (optional)
+              Sebep (opsiyonel)
             </label>
             <Textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Missing 2 items"
+              placeholder="2 ürün eksik"
               className="mt-1 h-20 rounded-xl border-[#E5E7EB] text-sm"
               data-testid="refund-note"
             />
@@ -85,14 +85,14 @@ export default function RefundDialog({ order, open, onOpenChange, onApply }) {
             onClick={() => onOpenChange(false)}
             className="rounded-full"
           >
-            Cancel
+            Vazgeç
           </Button>
           <Button
             onClick={handleApply}
             className="rounded-full bg-[#6C3BFF] font-bold hover:bg-[#582CD6]"
             data-testid="refund-apply"
           >
-            Apply refund
+            İadeyi uygula
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -11,10 +11,10 @@ import { useGapGel } from "@/store/GapGelContext";
 import { ShoppingBag, Store, Bike, Shield } from "lucide-react";
 
 const ROLE_META = {
-  customer: { label: "Customer", icon: ShoppingBag, path: "/customer" },
-  merchant: { label: "Merchant", icon: Store, path: "/merchant" },
-  courier: { label: "Courier", icon: Bike, path: "/courier" },
-  admin: { label: "Admin", icon: Shield, path: "/admin" },
+  customer: { label: "Müşteri", icon: ShoppingBag, path: "/customer" },
+  merchant: { label: "Satıcı", icon: Store, path: "/merchant" },
+  courier: { label: "Kurye", icon: Bike, path: "/courier" },
+  admin: { label: "Yönetici", icon: Shield, path: "/admin" },
 };
 
 export default function RoleSwitcher() {
@@ -49,7 +49,7 @@ export default function RoleSwitcher() {
           </span>
           <span className="text-lg">GapGel</span>
           <span className="ml-1 hidden rounded-full bg-[#00C2A8]/10 px-2 py-0.5 text-xs font-semibold text-[#00C2A8] md:inline">
-            hyperlocal OS
+            hiperlokal OS
           </span>
         </div>
 

@@ -9,10 +9,10 @@ export default function CourierHistory() {
 
   return (
     <div className="gg-rise px-4 pb-24 pt-4" data-testid="courier-history">
-      <h1 className="mb-4 text-xl font-extrabold">Delivery history</h1>
+      <h1 className="mb-4 text-xl font-extrabold">Teslimat geçmişi</h1>
       {past.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
-          No completed deliveries yet.
+          Henüz tamamlanmış teslimat yok.
         </div>
       ) : (
         <div className="space-y-2.5">

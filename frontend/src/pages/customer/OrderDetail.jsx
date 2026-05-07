@@ -17,7 +17,7 @@ import {
 export default function CustomerOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { state, findMerchant, findCourier, respondSubstitution } = useGapGel();
+  const { state, findMerchant, findCourier, findCustomer, respondSubstitution, reorderFromOrder } = useGapGel();
   const order = state.orders.find((o) => o.id === id);
 
   if (!order) {
@@ -45,7 +45,7 @@ export default function CustomerOrderDetail() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <div className="text-xs text-gray-500">Order</div>
+          <div className="text-xs text-gray-500">Sipariş</div>
           <div className="text-base font-extrabold">{order.id}</div>
         </div>
         <div className="ml-auto">
@@ -60,7 +60,7 @@ export default function CustomerOrderDetail() {
           data-testid="customer-otp-card"
         >
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#00A38D]">
-            <ShieldCheck className="h-4 w-4" /> Delivery code
+            <ShieldCheck className="h-4 w-4" /> Teslimat kodu
           </div>
           <div className="mt-1 flex items-baseline justify-between">
             <div
@@ -70,7 +70,7 @@ export default function CustomerOrderDetail() {
               {order.otp}
             </div>
             <div className="text-xs text-gray-500">
-              Share with courier on arrival
+              Kurye geldiğinde paylaşın
             </div>
           </div>
         </div>
@@ -83,7 +83,7 @@ export default function CustomerOrderDetail() {
           data-testid="customer-substitution-card"
         >
           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-700">
-            <MessageSquareWarning className="h-3.5 w-3.5" /> Merchant suggestion
+            <MessageSquareWarning className="h-3.5 w-3.5" /> Mağaza önerisi
           </div>
           <div className="mt-1 text-sm font-semibold text-amber-900">
             "{order.substitution.message}"
@@ -95,7 +95,7 @@ export default function CustomerOrderDetail() {
                 className="tap h-9 flex-1 rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
                 data-testid="substitution-accept"
               >
-                Accept
+                Kabul et
               </Button>
               <Button
                 onClick={() => respondSubstitution(order.id, false)}
@@ -103,13 +103,12 @@ export default function CustomerOrderDetail() {
                 className="tap h-9 flex-1 rounded-full border-red-200 font-bold text-red-600"
                 data-testid="substitution-decline"
               >
-                Decline
+                Reddet
               </Button>
             </div>
           ) : (
             <div className="mt-2 text-xs font-semibold text-amber-700">
-              You {order.substitution.accepted ? "accepted" : "declined"} the
-              suggestion.
+              Öneriyi {order.substitution.accepted ? "kabul ettiniz" : "reddettiniz"}.
             </div>
           )}
         </div>
@@ -122,7 +121,7 @@ export default function CustomerOrderDetail() {
             <Store className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs text-gray-500">Merchant</div>
+            <div className="text-xs text-gray-500">Mağaza</div>
             <div className="truncate text-sm font-bold">{merchant?.name}</div>
           </div>
         </div>
@@ -132,14 +131,14 @@ export default function CustomerOrderDetail() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-xs text-gray-500">
-              {order.selfDelivery ? "Delivered by merchant" : "Courier"}
+              {order.selfDelivery ? "Mağaza teslim ediyor" : "Kurye"}
             </div>
             <div className="truncate text-sm font-bold">
               {order.selfDelivery
                 ? merchant?.name
                 : courier
                   ? `${courier.name} · ${courier.vehicle}`
-                  : "Awaiting assignment…"}
+                  : "Atama bekleniyor…"}
             </div>
           </div>
         </div>
@@ -148,27 +147,39 @@ export default function CustomerOrderDetail() {
       {/* Timeline */}
       <div className="mb-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-600">
-          Progress
+          İlerleme
         </h2>
         <OrderTimeline status={order.status} cancelReason={order.cancelReason} />
       </div>
 
       {/* Rate CTA */}
       {order.status === "delivered" && (
-        <Button
-          onClick={() => navigate(`/customer/orders/${order.id}/rate`)}
-          className="tap mb-3 h-12 w-full rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
-          data-testid="rate-order-cta"
-        >
-          <Star className="mr-2 h-4 w-4" />
-          {order.rating ? "Update your rating" : "Rate your order"}
-        </Button>
+        <>
+          <Button
+            onClick={() => navigate(`/customer/orders/${order.id}/rate`)}
+            className="tap mb-2 h-12 w-full rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
+            data-testid="rate-order-cta"
+          >
+            <Star className="mr-2 h-4 w-4" />
+            {order.rating ? "Değerlendirmeyi güncelle" : "Siparişi değerlendir"}
+          </Button>
+          <Button
+            onClick={() => {
+              if (reorderFromOrder(order.id)) navigate("/customer/cart");
+            }}
+            variant="outline"
+            className="tap mb-3 h-12 w-full rounded-full border-[#6C3BFF]/30 font-bold text-[#6C3BFF] hover:bg-[#6C3BFF]/5"
+            data-testid="reorder-from-detail"
+          >
+            Tekrar sipariş ver
+          </Button>
+        </>
       )}
 
       {/* Items */}
       <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-600">
-          Items
+          Ürünler
         </h2>
         <div className="space-y-2 text-sm">
           {order.items.map((it) => (
@@ -189,21 +200,21 @@ export default function CustomerOrderDetail() {
           ))}
           <div className="my-2 border-t border-dashed border-gray-200" />
           <div className="flex justify-between text-xs text-gray-500">
-            <span>Subtotal</span>
+            <span>Ara toplam</span>
             <span>${order.subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-xs text-gray-500">
-            <span>Delivery</span>
+            <span>Teslimat</span>
             <span>${order.deliveryFee.toFixed(2)}</span>
           </div>
           {order.refund?.amount > 0 && (
             <div className="flex justify-between text-xs font-semibold text-red-600">
-              <span>Refund</span>
+              <span>İade</span>
               <span>− ${order.refund.amount.toFixed(2)}</span>
             </div>
           )}
           <div className="mt-1 flex items-baseline justify-between">
-            <span className="font-bold">Total</span>
+            <span className="font-bold">Toplam</span>
             <span className="text-lg font-extrabold">
               ${(order.total - (order.refund?.amount || 0)).toFixed(2)}
             </span>
@@ -213,7 +224,7 @@ export default function CustomerOrderDetail() {
 
       <div className="mt-3 flex items-center gap-2 rounded-2xl border border-[#E5E7EB] bg-white p-3 text-xs text-gray-500 shadow-sm">
         <MapPin className="h-4 w-4" />
-        Delivering to: 221B Baker Street, Apt 4
+        Teslimat adresi: {findCustomer(order.customerId)?.address}
       </div>
     </div>
   );
