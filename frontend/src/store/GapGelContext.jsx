@@ -524,12 +524,12 @@ export function GapGelProvider({ children }) {
           orderId,
           courierId: idle.id,
         });
-        toast.success(`Auto-dispatched to ${idle.name}`);
+        toast.success(`Otomatik atandı: ${idle.name}`);
       } else {
-        toast.warning("No idle courier — admin must assign");
+        toast.warning("Boştaki kurye yok — yönetici atama yapmalı");
       }
     } else {
-      toast.info("Self-delivery merchant — courier not needed");
+      toast.info("Mağaza teslim eder — kurye gerekmez");
     }
   };
 
@@ -541,7 +541,7 @@ export function GapGelProvider({ children }) {
     const order = state.orders.find((o) => o.id === orderId);
     if (!order) return;
     if (!order.otpVerified) {
-      toast.error("Verify the customer OTP first");
+      toast.error("Önce müşteri OTP kodunu doğrulayın");
       return;
     }
     dispatch({ type: "ORDER_TRANSITION", orderId, to: "delivered" });

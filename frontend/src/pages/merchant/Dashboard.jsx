@@ -298,7 +298,7 @@ export default function MerchantDashboard() {
                       className="tap h-11 flex-1 rounded-full bg-[#6C3BFF] font-bold hover:bg-[#582CD6]"
                       data-testid={`start-preparing-${o.id}`}
                     >
-                      <Timer className="mr-1.5 h-4 w-4" /> Mark Preparing
+                      <Timer className="mr-1.5 h-4 w-4" /> Hazırlamaya başla
                     </Button>
                   ) : (
                     <Button
@@ -306,7 +306,7 @@ export default function MerchantDashboard() {
                       className="tap h-11 flex-1 rounded-full bg-[#00C2A8] font-bold hover:bg-[#00A38D]"
                       data-testid={`mark-ready-${o.id}`}
                     >
-                      <CheckCircle2 className="mr-1.5 h-4 w-4" /> Mark Ready
+                      <CheckCircle2 className="mr-1.5 h-4 w-4" /> Hazır olarak işaretle
                     </Button>
                   )
                 }

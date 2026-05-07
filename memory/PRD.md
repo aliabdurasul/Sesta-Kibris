@@ -1,76 +1,47 @@
 # GapGel — Hyperlocal Marketplace + Logistics OS
 
 ## Problem Statement (verbatim)
-Build a complete multi-role frontend application. GapGel is a hyperlocal marketplace + logistics operating system. It must support Customers, Merchants, Couriers, and Admin. Full order lifecycle: `created → paid → accepted → preparing → ready → out_for_delivery → delivered`. Mobile-first, Uber Eats + Getir inspired. Pure frontend, in-memory state.
+Build a complete multi-role frontend application. GapGel is a hyperlocal marketplace + logistics operating system for Northern Cyprus (TRNC). Supports Customers, Merchants, Couriers, and Admin. Full order lifecycle simulated end-to-end. Pure frontend, in-memory + localStorage. Turkish UI.
 
 ## Architecture
-- Pure React + Context + useReducer global store
-- Pre-seeded: 3 merchants (Fresh Market market / Aqua Express water / GasGo gas), 3 couriers, 1 customer
-- Top-bar role switcher; mobile shell for Customer/Courier; desktop sidebar/tabs for Admin/Merchant
-- Auto-timers (useEffect): 30s auto-cancel for unaccepted paid orders, 15s reassign for unpicked-up courier orders
-- Constants: `COURIER_FEE_PER_DELIVERY=$2`, `DELIVERY_FEE=$1.50`, `AUTO_CANCEL_MS=30000`, `REASSIGN_MS=15000`
+- Pure React + Context + useReducer + localStorage hydration (key: `gapgel-state-v1`)
+- Pre-seeded: 3 merchants (Fresh Market market / Aqua Express water / GasGo gas), 3 couriers (Ali Yılmaz / Maya Çelik / Rauf Patel), 1 customer (Demo Kullanıcı)
+- Top-bar role switcher; mobile shell for Müşteri/Kurye; desktop tabs/sidebar for Satıcı/Yönetici
+- Auto-timers: 30s otomatik iptal for unaccepted paid orders, 15s yeniden atama for unpicked-up courier orders
+- Constants: COURIER_FEE_PER_DELIVERY=$2, DELIVERY_FEE=$1.50
 
-## User Personas
-- Customer (u1) — orders, pays, tracks, rates
-- Merchant (Fresh Market / Aqua Express / GasGo) — accepts/rejects, prepares, dispatches; water/gas self-deliver. Manages catalog with bulk CSV.
-- Courier (Ali / Maya / Ravi) — auto-assigned, OTP-verified deliveries, sees earnings
-- Admin — control tower: live orders table, force overrides, force-assign, partial refunds, CSV export, revenue chart, merchant confirmation rate
+## Localization
+- **Full Turkish UI** — all visible strings, status labels, toasts, dialogs, button labels, empty states, role badges. Type labels: market→Market, water→Su, gas→Tüp.
+- All `data-testid`s remain English/kebab-case for testability.
 
-## Core Requirements
-- Strict linear state-machine guard; only admin can override
-- Payment gate: merchants cannot accept unless `paid`
-- Courier `idle/busy` state; only idle couriers auto-assigned
-- Self-delivery rule for `water` / `gas` merchants (no courier)
-- Role-based order visibility
-- 4-digit OTP at delivery, non-skippable for couriers
-- Auto-cancel after 30s if merchant unresponsive (refund full)
-- 15s courier abandonment auto-reassign to next idle
-- Tap-to-call (`tel:`) for merchant→customer and courier→customer
-- Substitution flow: merchant offers, customer accepts/declines
-- Partial refund (admin), updates totals everywhere
-- Confirmation-rate metric per merchant
+## What's been implemented
+**Iter 1**: 4-role system, full order lifecycle, customer/merchant/courier/admin screens, auto-dispatch, water/gas self-delivery, role-based visibility. (19/19 pass)
 
-## What's been implemented (2026-02-06)
-**Iteration 1**
-- Customer Home (search/chips/featured/merchants), Merchant page (quick-add), Cart (Pay Now), Orders, OrderDetail with Timeline, Profile
-- Merchant tabs (New / Preparing / Ready) with Accept/Reject/Mark Preparing/Mark Ready/Self-dispatch/Self-deliver
-- Courier deliveries with Pickup / Delivered, history, profile
-- Admin sidebar, live orders table, status filter, force override, force assign, metric cards
-- Auto-dispatch with toast, water/gas self-delivery branch, deterministic SVG product tiles
-- Testing: 19/19 flows pass
+**Iter 2**: Customer rating, courier earnings, admin CSV export & 7-day chart, merchant catalog CRUD + bulk CSV, OTP-gated delivery, tap-to-call, substitution flow, partial refund, 30s auto-cancel, 15s reassign, merchant confirmation rate, cancelled state. (11/13 pass + static review)
 
-**Iteration 2 (this iteration)**
-- ⭐ **Customer rating flow**: per-order, merchant + courier stars + comments (`/customer/orders/:id/rate`)
-- 💰 **Courier earnings widget**: today / week / lifetime ($2/delivery)
-- 📊 **Admin revenue chart**: 7-day BarChart (recharts) of revenue + orders
-- 📥 **Admin CSV export**: downloads full orders ledger
-- 📦 **Merchant catalog tab**: add/edit/delete + **bulk CSV** paste/upload (handles 1000s)
-- 🔐 **OTP at delivery**: 4-digit code shown on customer page, courier-side gated dialog
-- 📞 **Tap-to-call**: `tel:` links on merchant + courier order cards
-- 🔁 **Substitution flow**: merchant offers, customer accepts/declines
-- 💸 **Admin partial refund** dialog (and refund column in table)
-- ⏱ **Auto-cancel** unaccepted paid orders after 30s with full refund + toast
-- 🛵 **Courier reassign** if no pickup in 15s; previous courier freed, next idle assigned
-- 📈 **Merchant confirmation-rate** widget on admin (red bar if <70%)
-- 🛑 **Cancelled state** added to state machine + StatusBadge + OrderTimeline banner
-- Testing: 11/13 features automation-verified, 2 timer-based features static-reviewed
+**Iter 3 (this iteration)**:
+- 💾 **localStorage persistence** — orders, cart, role selections survive page refresh; defensive shape migration; reset-demo button (`reset-demo-button`)
+- ⭐ **Per-merchant ratings tab** (`tab-ratings`) — avg score, histogram, customer review list with stars + comment + date
+- 🔁 **Customer reorder CTA** — on Orders list (`reorder-{id}`) and order detail (`reorder-from-detail`); skips deleted products with warning toast
+- 🇹🇷 **Full Turkish translation** — 100+ strings across all components, status labels, toasts, dialogs, buttons. Couriers and customer renamed to Turkish names. Merchant taglines/products in Turkish.
+- Testing: 9/9 directly executed assertions PASS, 6/6 verified via code review
 
 ## Known Notes
-- All state in-memory; refresh wipes data (intentional for demo)
-- Auto-timers use `Date.now() − createdAt/assignedAt` so they survive re-renders (won't restart from zero on every tick)
-- `merchantReject` now cancels the order with full refund (was: revert to created)
+- localStorage key versioned (`gapgel-state-v1`) so future schema changes can bump key
+- All `data-testid` attributes stayed English for tester compatibility
+- AUTO_CANCEL_MS=30000ms, REASSIGN_MS=15000ms — for production raise to 600000/180000 (10min/3min as per operator analysis)
 
 ## Prioritized Backlog
 ### P1
-- localStorage hydration so demo survives refresh
-- Per-merchant view of own ratings
-- Customer reorder button on past delivered orders
+- Merchant onboarding wizard with starter CSV template
+- Per-customer multi-account demo (currently 1 user)
+- Customer notifications (toast queue) for status changes
 ### P2
-- Multi-customer demo accounts
-- Image upload for catalog products (currently auto-generated SVG tiles)
-- Geofenced merchant filter
+- Image upload for catalog products (currently SVG gradient tiles)
+- Geofenced merchant filter / nearest-first sorting
+- Courier shift on/off toggle (idle/off/busy 3-state)
+- Locale switcher (TR/EN) — strings ready to be extracted to i18n module if needed
 
 ## Next Tasks
-- Optional: localStorage persistence
-- Optional: merchant onboarding wizard with bulk-CSV starter template
-- Iterate on user feedback
+- Optional: extract Turkish strings to a single `i18n/tr.js` module for easier maintenance
+- Optional: bump auto-cancel/reassign times to operator-analysis values (10min/3min) and add a "demo speed" toggle in admin
