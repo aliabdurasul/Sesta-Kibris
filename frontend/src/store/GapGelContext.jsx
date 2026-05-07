@@ -17,6 +17,7 @@ import {
   AUTO_CANCEL_MS,
   REASSIGN_MS,
   PROMO_CODES,
+  STATUS_LABELS,
 } from "@/data/seed";
 import {
   canTransition,
@@ -612,7 +613,7 @@ export function GapGelProvider({ children }) {
     if (to === "delivered" && order.courierId) {
       dispatch({ type: "COURIER_FREE", courierId: order.courierId });
     }
-    toast.success(`Yönetici güncelledi → ${to}`);
+    toast.success(`Yönetici güncelledi → ${STATUS_LABELS[to] || to}`);
   };
   const adminForceAssign = (orderId, courierId) => {
     dispatch({ type: "ADMIN_FORCE_ASSIGN", orderId, courierId });

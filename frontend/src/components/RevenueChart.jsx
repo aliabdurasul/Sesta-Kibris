@@ -61,8 +61,8 @@ export default function RevenueChart({ orders }) {
           </span>
         </div>
       </div>
-      <div className="h-56 w-full">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-56 w-full" style={{ minHeight: 224 }}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEF0F5" vertical={false} />
             <XAxis

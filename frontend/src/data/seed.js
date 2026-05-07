@@ -205,6 +205,16 @@ export const STOCK_LABELS = {
   out_of_stock: "Tükendi",
   hidden: "Gizli",
 };
+export const STATUS_LABELS = {
+  created: "Oluşturuldu",
+  paid: "Ödendi",
+  accepted: "Kabul Edildi",
+  preparing: "Hazırlanıyor",
+  ready: "Hazır",
+  out_for_delivery: "Yolda",
+  delivered: "Teslim Edildi",
+  cancelled: "İptal Edildi",
+};
 export const PROMO_CODES = { HADE10: { type: "percent", value: 10 } };
 
 export const DELIVERY_FEE = 1.5;
