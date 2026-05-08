@@ -20,6 +20,7 @@ export default function OtpDialog({ open, onOpenChange, expected, onVerified }) 
       setError(false);
       setTimeout(() => refs[0].current?.focus(), 50);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const handleChange = (idx, v) => {
