@@ -196,14 +196,14 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* HADE platform analytics */}
+        {/* SestaKibris platform analytics */}
         <div
           className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4"
           data-testid="platform-analytics"
         >
           <MetricCard
             label="GMV (toplam ciro)"
-            value={`$${platformAnalytics().gmv}`}
+            value={`₺${platformAnalytics().gmv}`}
             accent="#6C3BFF"
           />
           <MetricCard
@@ -218,7 +218,7 @@ export default function AdminDashboard() {
           />
           <MetricCard
             label="Toplam iade"
-            value={`$${platformAnalytics().refunds}`}
+            value={`₺${platformAnalytics().refunds}`}
             accent="#FF3B30"
           />
         </div>

@@ -259,7 +259,7 @@ export const STATUS_LABELS = {
   delivered: "Teslim Edildi",
   cancelled: "İptal Edildi",
 };
-export const PROMO_CODES = { HADE10: { type: "percent", value: 10 } };
+export const PROMO_CODES = { SESTA10: { type: "percent", value: 10 } };
 
 export const DELIVERY_FEE = 1.5;
 export const COURIER_FEE_PER_DELIVERY = 2.0;
