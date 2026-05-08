@@ -236,29 +236,29 @@ export default function CustomerOrderDetail() {
                 {it.name}
               </span>
               <span className="font-semibold">
-                ${it.lineTotal.toFixed(2)}
+                ₺{it.lineTotal.toFixed(2)}
               </span>
             </div>
           ))}
           <div className="my-2 border-t border-dashed border-gray-200" />
           <div className="flex justify-between text-xs text-gray-500">
             <span>Ara toplam</span>
-            <span>${order.subtotal.toFixed(2)}</span>
+            <span>₺{order.subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-xs text-gray-500">
             <span>Teslimat</span>
-            <span>${order.deliveryFee.toFixed(2)}</span>
+            <span>₺{order.deliveryFee.toFixed(2)}</span>
           </div>
           {order.refund?.amount > 0 && (
             <div className="flex justify-between text-xs font-semibold text-red-600">
               <span>İade</span>
-              <span>− ${order.refund.amount.toFixed(2)}</span>
+              <span>− ₺{order.refund.amount.toFixed(2)}</span>
             </div>
           )}
           <div className="mt-1 flex items-baseline justify-between">
             <span className="font-bold">Toplam</span>
             <span className="text-lg font-extrabold">
-              ${(order.total - (order.refund?.amount || 0)).toFixed(2)}
+              ₺{(order.total - (order.refund?.amount || 0)).toFixed(2)}
             </span>
           </div>
         </div>

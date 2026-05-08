@@ -242,7 +242,7 @@ export default function CustomerCart() {
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold">{it.name}</div>
               <div className="text-xs font-bold text-[#6C3BFF]">
-                ${it.price.toFixed(2)}
+                ₺{it.price.toFixed(2)}
               </div>
             </div>
             <div className="flex items-center gap-1 rounded-full bg-[#6C3BFF]/10 p-1">
@@ -284,7 +284,7 @@ export default function CustomerCart() {
             <Input
               value={promoInput}
               onChange={(e) => setPromoInput(e.target.value)}
-              placeholder="Promosyon kodu (örn. HADE10)"
+              placeholder="Promosyon kodu (örn. SESTA10)"
               className="h-9 rounded-full border-[#E5E7EB] pl-8 text-xs"
               data-testid="promo-input"
             />
@@ -314,20 +314,20 @@ export default function CustomerCart() {
         <div className="flex justify-between">
           <span className="text-gray-500">Ara toplam</span>
           <span className="font-semibold" data-testid="cart-subtotal">
-            ${subtotal.toFixed(2)}
+            ₺{subtotal.toFixed(2)}
           </span>
         </div>
         {discount > 0 && (
           <div className="mt-1 flex justify-between text-[#00A38D]">
             <span>İndirim ({promo?.code})</span>
             <span className="font-semibold" data-testid="cart-discount">
-              − ${discount.toFixed(2)}
+              − ₺{discount.toFixed(2)}
             </span>
           </div>
         )}
         <div className="mt-1.5 flex justify-between">
           <span className="text-gray-500">Teslimat ücreti</span>
-          <span className="font-semibold">${DELIVERY_FEE.toFixed(2)}</span>
+          <span className="font-semibold">₺{DELIVERY_FEE.toFixed(2)}</span>
         </div>
         <div className="mt-3 border-t border-dashed border-gray-200 pt-3">
           <div className="flex items-baseline justify-between">
@@ -336,7 +336,7 @@ export default function CustomerCart() {
               className="text-xl font-extrabold text-[#1A1A1A]"
               data-testid="cart-total"
             >
-              ${total.toFixed(2)}
+              ₺{total.toFixed(2)}
             </span>
           </div>
         </div>
@@ -350,7 +350,7 @@ export default function CustomerCart() {
           data-testid="pay-now-button"
         >
           <ShoppingCart className="mr-2 h-5 w-5" />
-          Şimdi öde · ${total.toFixed(2)}
+          Siparişi Tamamla · ₺{total.toFixed(2)}
         </Button>
       </div>
     </div>

@@ -81,7 +81,7 @@ export default function CourierOnboarding() {
         </button>
         <div>
           <div className="text-xs text-gray-500">Kurye başvurusu</div>
-          <h1 className="text-xl font-extrabold">HADE Kurye Olun</h1>
+          <h1 className="text-xl font-extrabold">SestaKibris Kurye Olun</h1>
         </div>
       </div>
 

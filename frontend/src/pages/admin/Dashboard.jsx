@@ -800,12 +800,12 @@ export default function AdminDashboard() {
                         )}
                       </td>
                       <td className="px-4 py-3 font-semibold">
-                        ${o.total.toFixed(2)}
+                        ₺{o.total.toFixed(2)}
                       </td>
                       <td className="px-4 py-3">
                         {o.refund?.amount > 0 ? (
                           <span className="text-xs font-bold text-red-600">
-                            − ${o.refund.amount.toFixed(2)}
+                            − ₺{o.refund.amount.toFixed(2)}
                           </span>
                         ) : (
                           <span className="text-xs text-gray-400">—</span>

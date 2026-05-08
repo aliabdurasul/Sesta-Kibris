@@ -41,7 +41,7 @@ const initialState = {
   orderSeq: 1000,
 };
 
-const STORAGE_KEY = "hade-state-v2";
+const STORAGE_KEY = "sesta-state-v2";
 
 function loadInitial() {
   try {
@@ -301,7 +301,7 @@ function reducer(state, action) {
       return { ...state, cart: { merchantId: null, items: [] } };
 
     case "ORDER_CREATE": {
-      const id = `HADE-${state.orderSeq + 1}`;
+      const id = `SESTAKIBRIS-${state.orderSeq + 1}`;
       const otp = String(Math.floor(1000 + Math.random() * 9000));
       const order = {
         id,
@@ -723,7 +723,7 @@ export function GapGelProvider({ children }) {
     const deliveryFee = DELIVERY_FEE;
     const discount = opts.discount || 0;
     const total = +(Math.max(0, subtotal - discount) + deliveryFee).toFixed(2);
-    const orderId = `HADE-${state.orderSeq + 1}`;
+    const orderId = `SESTAKIBRIS-${state.orderSeq + 1}`;
     // Resolve address snapshot
     const addrList = customer?.addresses || [];
     const chosen =
@@ -1155,7 +1155,7 @@ export function GapGelProvider({ children }) {
     toast.success("Demo sıfırlandı — başlangıç verisi yüklendi");
   }, []);
 
-  // HADE production-grade actions
+  // SestaKibris production-grade actions
   const setMerchantApproval = (merchantId, approvalStatus) => {
     dispatch({ type: "SET_MERCHANT_APPROVAL", merchantId, approvalStatus });
     toast.success(

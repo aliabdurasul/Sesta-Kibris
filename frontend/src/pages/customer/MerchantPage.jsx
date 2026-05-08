@@ -14,7 +14,7 @@ export default function CustomerMerchant() {
   if (!merchant) {
     return (
       <div className="p-6 text-center text-sm text-gray-500">
-        Merchant not found.
+        Mağaza bulunamadı.
       </div>
     );
   }
@@ -108,7 +108,7 @@ export default function CustomerMerchant() {
                   </div>
                   <div className="mt-1 flex items-center justify-between">
                     <div className="font-bold text-[#1A1A1A]">
-                      ${p.price.toFixed(2)}
+                      ₺{p.price.toFixed(2)}
                     </div>
                     {sold ? (
                       <span className="text-xs font-semibold text-gray-400">

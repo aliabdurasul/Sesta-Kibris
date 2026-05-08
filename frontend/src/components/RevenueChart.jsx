@@ -55,7 +55,7 @@ export default function RevenueChart({ orders }) {
           <div className="text-lg font-extrabold">Ciro ve siparişler</div>
         </div>
         <div className="text-xs text-gray-500">
-          Ciro ${" "}
+          Ciro ₺{" "}
           <span className="font-bold text-[#1A1A1A]">
             {data.reduce((a, b) => a + b.revenue, 0).toFixed(2)}
           </span>
@@ -83,7 +83,7 @@ export default function RevenueChart({ orders }) {
                 fontSize: 12,
               }}
               formatter={(v, name) =>
-                name === "revenue" ? [`$${v}`, "Ciro"] : [v, "Sipariş"]
+                name === "revenue" ? [`₺${v}`, "Ciro"] : [v, "Sipariş"]
               }
             />
             <Bar

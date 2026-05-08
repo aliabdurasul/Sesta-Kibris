@@ -77,7 +77,7 @@ export default function MerchantOnboarding() {
         </button>
         <div>
           <div className="text-xs text-gray-500">Mağaza başvurusu</div>
-          <h1 className="text-2xl font-extrabold">HADE'ye katılın</h1>
+          <h1 className="text-2xl font-extrabold">SestaKibris'ye katılın</h1>
         </div>
       </div>
 

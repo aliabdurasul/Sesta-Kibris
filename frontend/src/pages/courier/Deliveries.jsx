@@ -80,7 +80,7 @@ function DeliveryCard({
 
       <div className="mt-3 flex items-center justify-between text-xs font-semibold text-gray-500">
         <span>
-          {order.items.length} ürün · ${order.total.toFixed(2)}
+          {order.items.length} ürün · ₺{order.total.toFixed(2)}
         </span>
         <a
           href={`tel:${customer?.phone || ""}`}

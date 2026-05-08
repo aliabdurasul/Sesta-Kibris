@@ -43,14 +43,14 @@ export default function RefundDialog({ order, open, onOpenChange, onApply }) {
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-xl bg-[#F7F7FB] p-3 text-xs text-gray-600">
-            Sipariş toplamı: <strong>${order.total.toFixed(2)}</strong>
+            Sipariş toplamı: <strong>₺{order.total.toFixed(2)}</strong>
             {alreadyRefunded > 0 && (
               <>
                 {" · "}İade edilen:{" "}
-                <strong>${alreadyRefunded.toFixed(2)}</strong>
+                <strong>₺{alreadyRefunded.toFixed(2)}</strong>
               </>
             )}
-            {" · "}İade edilebilir: <strong>${max.toFixed(2)}</strong>
+            {" · "}İade edilebilir: <strong>₺{max.toFixed(2)}</strong>
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
