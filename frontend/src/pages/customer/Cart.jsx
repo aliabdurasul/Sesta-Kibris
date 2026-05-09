@@ -1,30 +1,20 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Tag, MapPin, Check, PlusCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Tag, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/hooks/useCart";
-import { useAuth } from "@/hooks/useAuth";
-import { usePlaceOrder } from "@/hooks/useOrders";
 import { useMerchant } from "@/hooks/useMerchants";
 import { DEFAULT_DELIVERY_FEE, formatPrice } from "@/lib/constants";
-import { toast } from "sonner";
 
 const PROMO_CODES = { SESTA10: { type: "percent", value: 10 } };
 
 export default function CustomerCart() {
   const navigate = useNavigate();
-  const { cart, addItem, decrementItem, removeItem, clearCart, subtotal } = useCart();
-  const { user } = useAuth();
-  const placeOrderMutation = usePlaceOrder();
-
+  const { cart, addItem, decrementItem, removeItem, subtotal } = useCart();
+  
   const { data: merchant } = useMerchant(cart.merchant_id);
 
-  const [guestName, setGuestName] = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
-  const [guestAddress, setGuestAddress] = useState("");
-  const [addressNotes, setAddressNotes] = useState("");
   const [promoInput, setPromoInput] = useState("");
   const [promo, setPromo] = useState(null);
 
@@ -39,42 +29,9 @@ export default function CustomerCart() {
     setPromo({ code, ...found });
   };
 
-  const handlePlaceOrder = async () => {
-    // [FUTURE AUTH]: Re-add `if (!user)` check when auth is enforced
-    if (!cart.items.length) { toast.error("Sepetiniz boş"); return; }
-    if (!guestName || !guestPhone || !guestAddress) { toast.error("Lütfen teslimat bilgilerinizi doldurun"); return; }
-
-    try {
-      const items = cart.items.map((i) => ({
-        product_id: i.product_id,
-        product_name: i.product_name,
-        product_image_url: i.product_image_url,
-        quantity: i.quantity,
-        unit_price: i.unit_price,
-        total_price: +(i.unit_price * i.quantity).toFixed(2),
-      }));
-
-      const order = await placeOrderMutation.mutateAsync({
-        customer_id: user?.id || null, // Optional for MVP
-        merchant_id: cart.merchant_id,
-        address_id: null, // Optional for MVP
-        guest_name: guestName,
-        guest_phone: guestPhone,
-        guest_address: guestAddress,
-        items,
-        subtotal,
-        delivery_fee: deliveryFee,
-        discount,
-        promo_code: promo?.code || null,
-        total,
-        special_instructions: addressNotes || null,
-      });
-
-      clearCart();
-      navigate(`/customer/orders/${order.id}`);
-    } catch (err) {
-      toast.error(err.message || "Sipariş verilemedi");
-    }
+  const proceedToCheckout = () => {
+    // Navigate to checkout and pass the calculated totals and promo
+    navigate("/checkout", { state: { discount, deliveryFee, total, promoCode: promo?.code } });
   };
 
   if (cart.items.length === 0) {
@@ -92,7 +49,7 @@ export default function CustomerCart() {
           </div>
           <h2 className="mt-4 text-lg font-bold">Sepetiniz boş</h2>
           <p className="mt-1 text-sm text-gray-500">Başlamak için bir mağazadan ürün ekleyin.</p>
-          <Button onClick={() => navigate("/customer")} className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]" data-testid="empty-cart-browse-button">
+          <Button onClick={() => navigate("/markets")} className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]" data-testid="empty-cart-browse-button">
             Mağazalara göz at
           </Button>
         </div>
@@ -114,30 +71,6 @@ export default function CustomerCart() {
         <div className="text-xs text-gray-500">Sipariş veriliyor</div>
         <div className="text-base font-bold">{merchant?.name || cart.merchant_name}</div>
         <div className="text-xs text-gray-500">{merchant?.avg_prep_minutes}–{(merchant?.avg_prep_minutes || 15) + 15} dk</div>
-      </div>
-
-      {/* Guest info (MVP) */}
-      <div className="mb-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm space-y-3">
-        <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-600">
-          <MapPin className="h-3.5 w-3.5" /> Teslimat Bilgileri
-        </div>
-        <Input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Ad Soyad" className="h-10 text-sm" />
-        <Input value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="Telefon (örn. 0533...)" type="tel" className="h-10 text-sm" />
-        <Textarea value={guestAddress} onChange={e => setGuestAddress(e.target.value)} placeholder="Açık Adres" className="min-h-[60px] resize-none text-sm" />
-      </div>
-
-      {/* Delivery note */}
-      <div className="mb-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm">
-        <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-600">
-          <MapPin className="h-3.5 w-3.5" /> Teslimat notu
-        </div>
-        <Textarea
-          value={addressNotes}
-          onChange={(e) => setAddressNotes(e.target.value)}
-          placeholder="Örn: Resepsiyona bırakın, zile basmayın…"
-          className="min-h-[60px] resize-none rounded-xl border-[#E5E7EB] text-xs"
-          data-testid="cart-address-notes"
-        />
       </div>
 
       {/* Cart items */}
@@ -178,7 +111,7 @@ export default function CustomerCart() {
         <div className="mb-3 flex gap-2">
           <div className="relative flex-1">
             <Tag className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <Input value={promoInput} onChange={(e) => setPromoInput(e.target.value)} placeholder="Promosyon kodu (örn. SESTA10)" className="h-9 rounded-full border-[#E5E7EB] pl-8 text-xs" data-testid="promo-input" />
+            <Input value={promoInput} onChange={(e) => setPromoInput(e.target.value)} placeholder="Promosyon kodu" className="h-9 rounded-full border-[#E5E7EB] pl-8 text-xs" data-testid="promo-input" />
           </div>
           <Button onClick={handleApplyPromo} variant="outline" className="h-9 rounded-full border-[#6C3BFF]/30 text-xs font-bold text-[#6C3BFF]" data-testid="promo-apply">Uygula</Button>
         </div>
@@ -187,10 +120,12 @@ export default function CustomerCart() {
             ✓ {promo.code} uygulandı · %{promo.value} indirim
           </div>
         )}
-        {promo?.invalid && <div className="mb-2 rounded-lg bg-red-50 p-2 text-xs font-bold text-red-600">Geçersiz promosyon kodu</div>}
+        {promo?.invalid && <div className="mb-2 rounded-lg bg-red-50 p-2 text-xs font-bold text-red-600">Geçersiz kod</div>}
+        
         <div className="flex justify-between"><span className="text-gray-500">Ara toplam</span><span className="font-semibold" data-testid="cart-subtotal">{formatPrice(subtotal)}</span></div>
         {discount > 0 && <div className="mt-1 flex justify-between text-[#00A38D]"><span>İndirim</span><span className="font-semibold" data-testid="cart-discount">− {formatPrice(discount)}</span></div>}
         <div className="mt-1.5 flex justify-between"><span className="text-gray-500">Teslimat ücreti</span><span className="font-semibold">{formatPrice(deliveryFee)}</span></div>
+        
         <div className="mt-3 border-t border-dashed border-gray-200 pt-3">
           <div className="flex items-baseline justify-between">
             <span className="font-bold">Toplam</span>
@@ -199,16 +134,15 @@ export default function CustomerCart() {
         </div>
       </div>
 
-      {/* Sticky place order button */}
+      {/* Sticky continue button */}
       <div className="fixed bottom-24 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4">
         <Button
-          onClick={handlePlaceOrder}
-          disabled={placeOrderMutation.isPending}
+          onClick={proceedToCheckout}
           className="tap h-14 w-full rounded-full bg-[#6C3BFF] text-base font-bold shadow-lg hover:bg-[#582CD6]"
-          data-testid="pay-now-button"
+          data-testid="checkout-button"
         >
-          {placeOrderMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShoppingCart className="mr-2 h-5 w-5" />}
-          Siparişi Tamamla · {formatPrice(total)}
+          Sepeti Onayla
+          <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
       </div>
     </div>

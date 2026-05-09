@@ -23,8 +23,11 @@ import Register from "@/pages/auth/Register";
 
 // Customer pages
 import CustomerHome from "@/pages/customer/Home";
+import CustomerMarkets from "@/pages/customer/Markets";
 import CustomerMerchant from "@/pages/customer/MerchantPage";
 import CustomerCart from "@/pages/customer/Cart";
+import CustomerCheckout from "@/pages/customer/Checkout";
+import OrderSuccess from "@/pages/customer/OrderSuccess";
 import CustomerOrders from "@/pages/customer/Orders";
 import CustomerOrderDetail from "@/pages/customer/OrderDetail";
 import CustomerProfile from "@/pages/customer/Profile";
@@ -73,11 +76,16 @@ export default function App() {
               {/* ── Customer routes ────────────────────────────── */}
               {/* [FUTURE AUTH REACTIVATION]: Wrap these routes in <AuthGuard> and <RoleGuard> when auth is enforced */}
               <Route element={<MobileShell variant="customer" />}>
-                <Route path="/customer" element={<CustomerHome />} />
-                <Route path="/customer/merchant/:id" element={<CustomerMerchant />} />
-                <Route path="/customer/cart" element={<CustomerCart />} />
+                <Route path="/" element={<CustomerHome />} />
+                <Route path="/markets" element={<CustomerMarkets />} />
+                <Route path="/market/:id" element={<CustomerMerchant />} />
+                <Route path="/cart" element={<CustomerCart />} />
+                <Route path="/checkout" element={<CustomerCheckout />} />
+                <Route path="/order-success/:id" element={<OrderSuccess />} />
+                <Route path="/order-track/:id" element={<CustomerOrderDetail />} />
+                
+                {/* Legacy protected paths (dormant) */}
                 <Route path="/customer/orders" element={<CustomerOrders />} />
-                <Route path="/customer/orders/:id" element={<CustomerOrderDetail />} />
                 <Route path="/customer/orders/:id/rate" element={<CustomerRate />} />
                 <Route path="/customer/profile" element={<CustomerProfile />} />
               </Route>
@@ -112,8 +120,7 @@ export default function App() {
               </Route>
 
               {/* ── Default redirect ───────────────────────────── */}
-              <Route path="/" element={<Navigate to="/customer" replace />} />
-              <Route path="*" element={<Navigate to="/customer" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
 

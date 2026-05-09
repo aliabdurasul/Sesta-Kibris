@@ -25,10 +25,10 @@ export default function BottomNav({ variant }) {
           },
         ]
       : [
-          { to: "/customer", label: "Ana sayfa", icon: Home, end: true },
+          { to: "/", label: "Ana sayfa", icon: Home, end: true },
           // [FUTURE AUTH]: Re-enable Siparişler and Profil when accounts are active
-          // { to: "/customer/orders", label: "Siparişler", icon: ClipboardList, end: false },
-          // { to: "/customer/profile", label: "Profil", icon: User, end: false },
+          // { to: "/orders", label: "Siparişler", icon: ClipboardList, end: false },
+          // { to: "/profile", label: "Profil", icon: User, end: false },
         ];
 
   return (

@@ -174,7 +174,7 @@ export default function CustomerMerchant() {
       {cartItemCount > 0 && (
         <div className="fixed bottom-24 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4">
           <Button
-            onClick={() => navigate("/customer/cart")}
+            onClick={() => navigate("/cart")}
             className="tap h-14 w-full rounded-full bg-[#6C3BFF] text-base font-bold hover:bg-[#582CD6]"
             data-testid="view-cart-button"
           >
