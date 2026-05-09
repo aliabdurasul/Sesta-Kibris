@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import CourierDeliveries from "@/pages/courier/Deliveries";
 

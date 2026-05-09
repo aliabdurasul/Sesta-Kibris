@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import Register from "@/pages/auth/Register";
 

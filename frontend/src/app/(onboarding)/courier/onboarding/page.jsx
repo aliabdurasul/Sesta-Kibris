@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import CourierOnboarding from "@/pages/courier/Onboarding";
 
