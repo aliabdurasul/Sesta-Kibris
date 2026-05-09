@@ -68,11 +68,13 @@ export function useOrder(orderId) {
  */
 export function useOrderRealtime(filter) {
   const qc = useQueryClient();
+  const column = filter?.column;
+  const value = filter?.value;
 
   useEffect(() => {
-    if (!filter?.value) return;
+    if (!value || !column) return;
 
-    const unsubscribe = ordersService.subscribeToOrders(filter, (updatedOrder) => {
+    const unsubscribe = ordersService.subscribeToOrders({ column, value }, (updatedOrder) => {
       // Update the specific order in cache
       qc.setQueryData(orderKeys.detail(updatedOrder.id), updatedOrder);
       // Invalidate list queries to trigger refetch
@@ -80,7 +82,7 @@ export function useOrderRealtime(filter) {
     });
 
     return unsubscribe;
-  }, [filter?.column, filter?.value, qc]);
+  }, [column, value, qc]);
 }
 
 // ─── Mutations ────────────────────────────────────────────────
