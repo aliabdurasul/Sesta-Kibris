@@ -1,5 +1,6 @@
+"use client";
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@/lib/router-bridge";
 import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Tag, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -1,5 +1,6 @@
+"use client";
 import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "@/lib/router-bridge";
 import {
   Select,
   SelectContent,

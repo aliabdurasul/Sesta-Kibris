@@ -1,5 +1,6 @@
+"use client";
 import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "@/lib/router-bridge";
 import { Home, ClipboardList, User, Bike } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 

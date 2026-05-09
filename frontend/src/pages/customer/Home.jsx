@@ -1,5 +1,6 @@
+"use client";
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@/lib/router-bridge";
 import { Search, MapPin, Store, Droplet, Flame, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 

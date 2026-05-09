@@ -1,5 +1,6 @@
+"use client";
 import React from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "@/lib/router-bridge";
 import { CheckCircle2, Map, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

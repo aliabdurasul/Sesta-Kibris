@@ -1,5 +1,6 @@
+"use client";
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@/lib/router-bridge";
 import { ChevronRight, RefreshCw, Loader2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";

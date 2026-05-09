@@ -2,8 +2,9 @@
 // RoleGuard — Redirect users without the required role
 // ══════════════════════════════════════════════════════════════
 
+"use client";
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet } from '@/lib/router-bridge';
 import { useAuth } from '../contexts/AuthContext';
 
 /**
@@ -11,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
  *          <Route path="/merchant" element={<MerchantDashboard />} />
  *        </Route>
  */
-export default function RoleGuard({ allowed = [] }) {
+export default function RoleGuard({ allowed = [], children }) {
   const { roles, primaryRole, loading } = useAuth();
 
   if (loading) {
@@ -36,5 +37,5 @@ export default function RoleGuard({ allowed = [] }) {
     return <Navigate to={redirectMap[primaryRole] || '/customer'} replace />;
   }
 
-  return <Outlet />;
+  return children;
 }

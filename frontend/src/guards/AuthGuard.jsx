@@ -2,11 +2,12 @@
 // AuthGuard — Redirect unauthenticated users to /login
 // ══════════════════════════════════════════════════════════════
 
+"use client";
 import React from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from '@/lib/router-bridge';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function AuthGuard() {
+export default function AuthGuard({ children }) {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
@@ -22,5 +23,5 @@ export default function AuthGuard() {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <Outlet />;
+  return children;
 }

@@ -1,5 +1,6 @@
+"use client";
 import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@/lib/router-bridge";
 import { Input } from "@/components/ui/input";
 import { Search, Clock, Loader2 } from "lucide-react";
 import { useActiveMerchants } from "@/hooks/useMerchants";

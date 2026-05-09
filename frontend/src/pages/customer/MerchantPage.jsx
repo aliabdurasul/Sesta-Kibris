@@ -1,5 +1,6 @@
+"use client";
 import React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "@/lib/router-bridge";
 import { ArrowLeft, Plus, Minus, Clock, ShoppingCart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMerchant, useMerchantProducts } from "@/hooks/useMerchants";

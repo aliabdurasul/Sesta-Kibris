@@ -1,5 +1,6 @@
+"use client";
 import React, { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "@/lib/router-bridge";
 import { useMarketplace } from "@/store/GapGelContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
