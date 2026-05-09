@@ -71,18 +71,15 @@ export default function App() {
               </Route>
 
               {/* ── Customer routes ────────────────────────────── */}
-              <Route element={<AuthGuard />}>
-                <Route element={<RoleGuard allowed={["customer", "merchant_owner", "merchant_staff", "courier", "admin"]} />}>
-                  <Route element={<MobileShell variant="customer" />}>
-                    <Route path="/customer" element={<CustomerHome />} />
-                    <Route path="/customer/merchant/:id" element={<CustomerMerchant />} />
-                    <Route path="/customer/cart" element={<CustomerCart />} />
-                    <Route path="/customer/orders" element={<CustomerOrders />} />
-                    <Route path="/customer/orders/:id" element={<CustomerOrderDetail />} />
-                    <Route path="/customer/orders/:id/rate" element={<CustomerRate />} />
-                    <Route path="/customer/profile" element={<CustomerProfile />} />
-                  </Route>
-                </Route>
+              {/* [FUTURE AUTH REACTIVATION]: Wrap these routes in <AuthGuard> and <RoleGuard> when auth is enforced */}
+              <Route element={<MobileShell variant="customer" />}>
+                <Route path="/customer" element={<CustomerHome />} />
+                <Route path="/customer/merchant/:id" element={<CustomerMerchant />} />
+                <Route path="/customer/cart" element={<CustomerCart />} />
+                <Route path="/customer/orders" element={<CustomerOrders />} />
+                <Route path="/customer/orders/:id" element={<CustomerOrderDetail />} />
+                <Route path="/customer/orders/:id/rate" element={<CustomerRate />} />
+                <Route path="/customer/profile" element={<CustomerProfile />} />
               </Route>
 
               {/* ── Courier routes ─────────────────────────────── */}
@@ -115,8 +112,8 @@ export default function App() {
               </Route>
 
               {/* ── Default redirect ───────────────────────────── */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="*" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<Navigate to="/customer" replace />} />
+              <Route path="*" element={<Navigate to="/customer" replace />} />
             </Routes>
           </BrowserRouter>
 

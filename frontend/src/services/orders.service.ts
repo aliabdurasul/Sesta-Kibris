@@ -63,9 +63,12 @@ export async function getOrder(orderId: string) {
 
 /** Place a new order. */
 export async function placeOrder(params: {
-  customer_id: string;
+  customer_id: string | null;
   merchant_id: string;
-  address_id: string;
+  address_id: string | null;
+  guest_name?: string;
+  guest_phone?: string;
+  guest_address?: string;
   items: Array<{
     product_id: string;
     product_name: string;
@@ -88,6 +91,9 @@ export async function placeOrder(params: {
       customer_id: params.customer_id,
       merchant_id: params.merchant_id,
       address_id: params.address_id,
+      guest_name: params.guest_name,
+      guest_phone: params.guest_phone,
+      guest_address: params.guest_address,
       subtotal: params.subtotal,
       delivery_fee: params.delivery_fee,
       discount: params.discount,

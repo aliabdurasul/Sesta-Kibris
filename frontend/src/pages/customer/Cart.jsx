@@ -21,7 +21,9 @@ export default function CustomerCart() {
 
   const { data: merchant } = useMerchant(cart.merchant_id);
 
-  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestAddress, setGuestAddress] = useState("");
   const [addressNotes, setAddressNotes] = useState("");
   const [promoInput, setPromoInput] = useState("");
   const [promo, setPromo] = useState(null);
@@ -38,8 +40,9 @@ export default function CustomerCart() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!user) { toast.error("Giriş yapmanız gerekiyor"); return; }
+    // [FUTURE AUTH]: Re-add `if (!user)` check when auth is enforced
     if (!cart.items.length) { toast.error("Sepetiniz boş"); return; }
+    if (!guestName || !guestPhone || !guestAddress) { toast.error("Lütfen teslimat bilgilerinizi doldurun"); return; }
 
     try {
       const items = cart.items.map((i) => ({
@@ -52,9 +55,12 @@ export default function CustomerCart() {
       }));
 
       const order = await placeOrderMutation.mutateAsync({
-        customer_id: user.id,
+        customer_id: user?.id || null, // Optional for MVP
         merchant_id: cart.merchant_id,
-        address_id: selectedAddressId,
+        address_id: null, // Optional for MVP
+        guest_name: guestName,
+        guest_phone: guestPhone,
+        guest_address: guestAddress,
         items,
         subtotal,
         delivery_fee: deliveryFee,
@@ -108,6 +114,16 @@ export default function CustomerCart() {
         <div className="text-xs text-gray-500">Sipariş veriliyor</div>
         <div className="text-base font-bold">{merchant?.name || cart.merchant_name}</div>
         <div className="text-xs text-gray-500">{merchant?.avg_prep_minutes}–{(merchant?.avg_prep_minutes || 15) + 15} dk</div>
+      </div>
+
+      {/* Guest info (MVP) */}
+      <div className="mb-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm space-y-3">
+        <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-600">
+          <MapPin className="h-3.5 w-3.5" /> Teslimat Bilgileri
+        </div>
+        <Input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Ad Soyad" className="h-10 text-sm" />
+        <Input value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="Telefon (örn. 0533...)" type="tel" className="h-10 text-sm" />
+        <Textarea value={guestAddress} onChange={e => setGuestAddress(e.target.value)} placeholder="Açık Adres" className="min-h-[60px] resize-none text-sm" />
       </div>
 
       {/* Delivery note */}
