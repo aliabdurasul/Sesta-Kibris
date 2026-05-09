@@ -1,128 +1,92 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGapGel } from "@/store/GapGelContext";
-import {
-  ArrowLeft,
-  Plus,
-  Minus,
-  Trash2,
-  ShoppingCart,
-  Tag,
-  MapPin,
-  Check,
-  PlusCircle,
-} from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Tag, MapPin, Check, PlusCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { DELIVERY_FEE, EMPTY_IMAGES } from "@/data/seed";
+import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
+import { usePlaceOrder } from "@/hooks/useOrders";
+import { useMerchant } from "@/hooks/useMerchants";
+import { DEFAULT_DELIVERY_FEE, formatPrice } from "@/lib/constants";
+import { toast } from "sonner";
+
+const PROMO_CODES = { SESTA10: { type: "percent", value: 10 } };
 
 export default function CustomerCart() {
   const navigate = useNavigate();
-  const {
-    state,
-    findMerchant,
-    findProduct,
-    findCustomer,
-    cartAdd,
-    cartDec,
-    cartRemove,
-    placeOrder,
-    payOrder,
-    applyPromo,
-  } = useGapGel();
+  const { cart, addItem, decrementItem, removeItem, clearCart, subtotal } = useCart();
+  const { user } = useAuth();
+  const placeOrderMutation = usePlaceOrder();
 
-  const merchant = state.cart.merchantId
-    ? findMerchant(state.cart.merchantId)
-    : null;
+  const { data: merchant } = useMerchant(cart.merchant_id);
 
-  const customer = findCustomer(state.currentCustomerId);
-  const addresses = useMemo(
-    () => customer?.addresses || [],
-    [customer],
-  );
-  const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
-  const [selectedAddressId, setSelectedAddressId] = useState(
-    defaultAddr?.id || null,
-  );
-  const selectedAddress = useMemo(
-    () => addresses.find((a) => a.id === selectedAddressId) || defaultAddr,
-    [addresses, selectedAddressId, defaultAddr],
-  );
-  const [addressNotes, setAddressNotes] = useState(selectedAddress?.notes || "");
-
-  // Sync notes when switching address
-  React.useEffect(() => {
-    setAddressNotes(selectedAddress?.notes || "");
-  }, [selectedAddressId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const items = state.cart.items.map((i) => {
-    const p = findProduct(state.cart.merchantId, i.productId);
-    return { ...p, qty: i.qty, lineTotal: +(p.price * i.qty).toFixed(2) };
-  });
-
-  const subtotal = +items.reduce((a, b) => a + b.lineTotal, 0).toFixed(2);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [addressNotes, setAddressNotes] = useState("");
   const [promoInput, setPromoInput] = useState("");
   const [promo, setPromo] = useState(null);
-  const discount =
-    promo && promo.type === "percent" ? +(subtotal * promo.value / 100).toFixed(2) : 0;
-  const total = +(
-    Math.max(0, subtotal - discount) + (items.length ? DELIVERY_FEE : 0)
-  ).toFixed(2);
+
+  const discount = promo?.type === "percent" ? +(subtotal * promo.value / 100).toFixed(2) : 0;
+  const deliveryFee = cart.items.length ? DEFAULT_DELIVERY_FEE : 0;
+  const total = +(Math.max(0, subtotal - discount) + deliveryFee).toFixed(2);
 
   const handleApplyPromo = () => {
-    const result = applyPromo(promoInput);
-    if (!result || result.invalid) {
-      setPromo(null);
-      return;
-    }
-    setPromo(result);
+    const code = promoInput.trim().toUpperCase();
+    const found = PROMO_CODES[code];
+    if (!found) { setPromo({ invalid: true }); return; }
+    setPromo({ code, ...found });
   };
 
-  const handlePay = () => {
-    const orderId = placeOrder({
-      promo,
-      discount,
-      total,
-      addressId: selectedAddress?.id,
-      addressNotes,
-    });
-    if (orderId) {
-      payOrder(orderId);
-      navigate(`/customer/orders/${orderId}`);
+  const handlePlaceOrder = async () => {
+    if (!user) { toast.error("Giriş yapmanız gerekiyor"); return; }
+    if (!cart.items.length) { toast.error("Sepetiniz boş"); return; }
+
+    try {
+      const items = cart.items.map((i) => ({
+        product_id: i.product_id,
+        product_name: i.product_name,
+        product_image_url: i.product_image_url,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+        total_price: +(i.unit_price * i.quantity).toFixed(2),
+      }));
+
+      const order = await placeOrderMutation.mutateAsync({
+        customer_id: user.id,
+        merchant_id: cart.merchant_id,
+        address_id: selectedAddressId,
+        items,
+        subtotal,
+        delivery_fee: deliveryFee,
+        discount,
+        promo_code: promo?.code || null,
+        total,
+        special_instructions: addressNotes || null,
+      });
+
+      clearCart();
+      navigate(`/customer/orders/${order.id}`);
+    } catch (err) {
+      toast.error(err.message || "Sipariş verilemedi");
     }
   };
 
-  if (items.length === 0) {
+  if (cart.items.length === 0) {
     return (
       <div className="gg-rise px-4 pb-24 pt-4" data-testid="customer-cart-empty">
         <div className="mb-4 flex items-center gap-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm"
-            data-testid="back-button"
-          >
+          <button onClick={() => navigate(-1)} className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm" data-testid="back-button">
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="text-xl font-extrabold">Sepetim</h1>
         </div>
         <div className="grid place-items-center rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
-          <div className="h-40 w-40 overflow-hidden rounded-2xl">
-            <img
-              src={EMPTY_IMAGES.cart}
-              alt="Boş sepet"
-              className="h-full w-full object-cover"
-            />
+          <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-[#6C3BFF]/10">
+            <ShoppingCart className="h-10 w-10 text-[#6C3BFF]" />
           </div>
           <h2 className="mt-4 text-lg font-bold">Sepetiniz boş</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Başlamak için bir mağazadan ürün ekleyin.
-          </p>
-          <Button
-            onClick={() => navigate("/customer")}
-            className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]"
-            data-testid="empty-cart-browse-button"
-          >
+          <p className="mt-1 text-sm text-gray-500">Başlamak için bir mağazadan ürün ekleyin.</p>
+          <Button onClick={() => navigate("/customer")} className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]" data-testid="empty-cart-browse-button">
             Mağazalara göz at
           </Button>
         </div>
@@ -133,142 +97,60 @@ export default function CustomerCart() {
   return (
     <div className="gg-rise px-4 pb-40 pt-4" data-testid="customer-cart">
       <div className="mb-4 flex items-center gap-2">
-        <button
-          onClick={() => navigate(-1)}
-          className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm"
-          data-testid="back-button"
-        >
+        <button onClick={() => navigate(-1)} className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="text-xl font-extrabold">Sepetim</h1>
       </div>
 
+      {/* Merchant info */}
       <div className="mb-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm">
         <div className="text-xs text-gray-500">Sipariş veriliyor</div>
-        <div className="text-base font-bold">{merchant?.name}</div>
-        <div className="text-xs text-gray-500">{merchant?.delivery}</div>
+        <div className="text-base font-bold">{merchant?.name || cart.merchant_name}</div>
+        <div className="text-xs text-gray-500">{merchant?.avg_prep_minutes}–{(merchant?.avg_prep_minutes || 15) + 15} dk</div>
       </div>
 
-      {/* Address selector */}
-      <div
-        className="mb-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm"
-        data-testid="cart-address-selector"
-      >
-        <div className="mb-2 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-600">
-            <MapPin className="h-3.5 w-3.5" /> Teslimat adresi
-          </div>
-          <button
-            onClick={() => navigate("/customer/profile")}
-            className="text-xs font-bold text-[#6C3BFF] hover:underline"
-            data-testid="cart-manage-addresses"
-          >
-            <PlusCircle className="mr-1 inline h-3 w-3" />
-            Adres ekle
-          </button>
+      {/* Delivery note */}
+      <div className="mb-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm">
+        <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-600">
+          <MapPin className="h-3.5 w-3.5" /> Teslimat notu
         </div>
-        <div className="space-y-1.5">
-          {addresses.map((a) => {
-            const isSel = a.id === selectedAddress?.id;
-            return (
-              <button
-                key={a.id}
-                onClick={() => setSelectedAddressId(a.id)}
-                className={`tap flex w-full items-start gap-2 rounded-xl border p-2.5 text-left transition-all ${
-                  isSel
-                    ? "border-[#6C3BFF] bg-[#6C3BFF]/5"
-                    : "border-[#E5E7EB] bg-white hover:border-[#6C3BFF]/30"
-                }`}
-                data-testid={`cart-address-option-${a.id}`}
-              >
-                <div
-                  className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 ${
-                    isSel
-                      ? "border-[#6C3BFF] bg-[#6C3BFF]"
-                      : "border-gray-300 bg-white"
-                  }`}
-                >
-                  {isSel && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold">{a.label}</span>
-                    {a.isDefault && (
-                      <span className="rounded-full bg-[#00C2A8]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#00A38D]">
-                        Varsayılan
-                      </span>
-                    )}
-                  </div>
-                  <div className="truncate text-xs text-gray-600">{a.line}</div>
-                  {a.district && (
-                    <div className="truncate text-[11px] text-gray-400">
-                      {a.district}
-                    </div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        {/* Delivery notes */}
-        <div className="mt-3">
-          <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-500">
-            Teslimat notu (opsiyonel)
-          </label>
-          <Textarea
-            value={addressNotes}
-            onChange={(e) => setAddressNotes(e.target.value)}
-            placeholder="Örn: Resepsiyona bırakın, zile basmayın…"
-            className="min-h-[60px] resize-none rounded-xl border-[#E5E7EB] text-xs"
-            data-testid="cart-address-notes"
-          />
-        </div>
+        <Textarea
+          value={addressNotes}
+          onChange={(e) => setAddressNotes(e.target.value)}
+          placeholder="Örn: Resepsiyona bırakın, zile basmayın…"
+          className="min-h-[60px] resize-none rounded-xl border-[#E5E7EB] text-xs"
+          data-testid="cart-address-notes"
+        />
       </div>
 
+      {/* Cart items */}
       <div className="space-y-2.5">
-        {items.map((it) => (
-          <div
-            key={it.id}
-            className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm"
-            data-testid={`cart-item-${it.id}`}
-          >
+        {cart.items.map((it) => (
+          <div key={it.product_id} className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm" data-testid={`cart-item-${it.product_id}`}>
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gray-100">
-              <img
-                src={it.image}
-                alt={it.name}
-                className="h-full w-full object-cover"
-              />
+              {it.product_image_url ? (
+                <img src={it.product_image_url} alt={it.product_name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#6C3BFF]/20 to-[#00C2A8]/20">
+                  <span className="text-sm font-bold text-[#6C3BFF]">{it.product_name.charAt(0)}</span>
+                </div>
+              )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold">{it.name}</div>
-              <div className="text-xs font-bold text-[#6C3BFF]">
-                ₺{it.price.toFixed(2)}
-              </div>
+              <div className="truncate text-sm font-semibold">{it.product_name}</div>
+              <div className="text-xs font-bold text-[#6C3BFF]">{formatPrice(it.unit_price)}</div>
             </div>
             <div className="flex items-center gap-1 rounded-full bg-[#6C3BFF]/10 p-1">
-              <button
-                onClick={() => cartDec(it.id)}
-                className="tap grid h-7 w-7 place-items-center rounded-full bg-white text-[#6C3BFF] shadow-sm"
-                data-testid={`cart-dec-${it.id}`}
-              >
+              <button onClick={() => decrementItem(it.product_id)} className="tap grid h-7 w-7 place-items-center rounded-full bg-white text-[#6C3BFF] shadow-sm" data-testid={`cart-dec-${it.product_id}`}>
                 <Minus className="h-3.5 w-3.5" strokeWidth={3} />
               </button>
-              <span className="min-w-[18px] text-center text-sm font-bold text-[#6C3BFF]">
-                {it.qty}
-              </span>
-              <button
-                onClick={() => cartAdd(merchant.id, it.id)}
-                className="tap grid h-7 w-7 place-items-center rounded-full bg-[#6C3BFF] text-white"
-                data-testid={`cart-inc-${it.id}`}
-              >
+              <span className="min-w-[18px] text-center text-sm font-bold text-[#6C3BFF]">{it.quantity}</span>
+              <button onClick={() => addItem(cart.merchant_id, cart.merchant_name, it)} className="tap grid h-7 w-7 place-items-center rounded-full bg-[#6C3BFF] text-white" data-testid={`cart-inc-${it.product_id}`}>
                 <Plus className="h-3.5 w-3.5" strokeWidth={3} />
               </button>
             </div>
-            <button
-              onClick={() => cartRemove(it.id)}
-              className="tap ml-1 grid h-8 w-8 place-items-center rounded-full text-gray-400 hover:text-red-500"
-              data-testid={`cart-remove-${it.id}`}
-            >
+            <button onClick={() => removeItem(it.product_id)} className="tap ml-1 grid h-8 w-8 place-items-center rounded-full text-gray-400 hover:text-red-500" data-testid={`cart-remove-${it.product_id}`}>
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
@@ -277,80 +159,40 @@ export default function CustomerCart() {
 
       {/* Totals */}
       <div className="mt-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 text-sm shadow-sm">
-        {/* Promo */}
         <div className="mb-3 flex gap-2">
           <div className="relative flex-1">
             <Tag className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <Input
-              value={promoInput}
-              onChange={(e) => setPromoInput(e.target.value)}
-              placeholder="Promosyon kodu (örn. SESTA10)"
-              className="h-9 rounded-full border-[#E5E7EB] pl-8 text-xs"
-              data-testid="promo-input"
-            />
+            <Input value={promoInput} onChange={(e) => setPromoInput(e.target.value)} placeholder="Promosyon kodu (örn. SESTA10)" className="h-9 rounded-full border-[#E5E7EB] pl-8 text-xs" data-testid="promo-input" />
           </div>
-          <Button
-            onClick={handleApplyPromo}
-            variant="outline"
-            className="h-9 rounded-full border-[#6C3BFF]/30 text-xs font-bold text-[#6C3BFF]"
-            data-testid="promo-apply"
-          >
-            Uygula
-          </Button>
+          <Button onClick={handleApplyPromo} variant="outline" className="h-9 rounded-full border-[#6C3BFF]/30 text-xs font-bold text-[#6C3BFF]" data-testid="promo-apply">Uygula</Button>
         </div>
         {promo && !promo.invalid && (
-          <div
-            className="mb-2 rounded-lg bg-[#00C2A8]/10 p-2 text-xs font-bold text-[#00A38D]"
-            data-testid="promo-applied"
-          >
+          <div className="mb-2 rounded-lg bg-[#00C2A8]/10 p-2 text-xs font-bold text-[#00A38D]" data-testid="promo-applied">
             ✓ {promo.code} uygulandı · %{promo.value} indirim
           </div>
         )}
-        {promo?.invalid && (
-          <div className="mb-2 rounded-lg bg-red-50 p-2 text-xs font-bold text-red-600">
-            Geçersiz promosyon kodu
-          </div>
-        )}
-        <div className="flex justify-between">
-          <span className="text-gray-500">Ara toplam</span>
-          <span className="font-semibold" data-testid="cart-subtotal">
-            ₺{subtotal.toFixed(2)}
-          </span>
-        </div>
-        {discount > 0 && (
-          <div className="mt-1 flex justify-between text-[#00A38D]">
-            <span>İndirim ({promo?.code})</span>
-            <span className="font-semibold" data-testid="cart-discount">
-              − ₺{discount.toFixed(2)}
-            </span>
-          </div>
-        )}
-        <div className="mt-1.5 flex justify-between">
-          <span className="text-gray-500">Teslimat ücreti</span>
-          <span className="font-semibold">₺{DELIVERY_FEE.toFixed(2)}</span>
-        </div>
+        {promo?.invalid && <div className="mb-2 rounded-lg bg-red-50 p-2 text-xs font-bold text-red-600">Geçersiz promosyon kodu</div>}
+        <div className="flex justify-between"><span className="text-gray-500">Ara toplam</span><span className="font-semibold" data-testid="cart-subtotal">{formatPrice(subtotal)}</span></div>
+        {discount > 0 && <div className="mt-1 flex justify-between text-[#00A38D]"><span>İndirim</span><span className="font-semibold" data-testid="cart-discount">− {formatPrice(discount)}</span></div>}
+        <div className="mt-1.5 flex justify-between"><span className="text-gray-500">Teslimat ücreti</span><span className="font-semibold">{formatPrice(deliveryFee)}</span></div>
         <div className="mt-3 border-t border-dashed border-gray-200 pt-3">
           <div className="flex items-baseline justify-between">
             <span className="font-bold">Toplam</span>
-            <span
-              className="text-xl font-extrabold text-[#1A1A1A]"
-              data-testid="cart-total"
-            >
-              ₺{total.toFixed(2)}
-            </span>
+            <span className="text-xl font-extrabold text-[#1A1A1A]" data-testid="cart-total">{formatPrice(total)}</span>
           </div>
         </div>
       </div>
 
-      {/* Sticky pay button */}
+      {/* Sticky place order button */}
       <div className="fixed bottom-24 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4">
         <Button
-          onClick={handlePay}
+          onClick={handlePlaceOrder}
+          disabled={placeOrderMutation.isPending}
           className="tap h-14 w-full rounded-full bg-[#6C3BFF] text-base font-bold shadow-lg hover:bg-[#582CD6]"
           data-testid="pay-now-button"
         >
-          <ShoppingCart className="mr-2 h-5 w-5" />
-          Siparişi Tamamla · ₺{total.toFixed(2)}
+          {placeOrderMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShoppingCart className="mr-2 h-5 w-5" />}
+          Siparişi Tamamla · {formatPrice(total)}
         </Button>
       </div>
     </div>

@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
-import { Search, Star, Clock, Sparkles } from "lucide-react";
-import { useGapGel } from "@/store/GapGelContext";
-import { TYPE_LABELS } from "@/data/seed";
+import { Search, Star, Clock, Sparkles, Loader2 } from "lucide-react";
+import { useActiveMerchants } from "@/hooks/useMerchants";
+import { MERCHANT_TYPE_LABELS } from "@/lib/constants";
 
 const CHIPS = [
   { key: "all", label: "Hepsi" },
@@ -13,26 +13,40 @@ const CHIPS = [
 ];
 
 export default function CustomerHome() {
-  const { state } = useGapGel();
   const navigate = useNavigate();
   const [chip, setChip] = useState("all");
   const [query, setQuery] = useState("");
 
-  const merchants = useMemo(() => {
-    return state.merchants.filter((m) => {
-      if (m.approvalStatus && m.approvalStatus !== "approved") return false;
+  // ── Real data from Supabase ──────────────────────────────
+  const { data: merchants = [], isLoading, isError } = useActiveMerchants();
+
+  const filtered = useMemo(() => {
+    return merchants.filter((m) => {
       const matchesChip = chip === "all" || m.type === chip;
+      const q = query.toLowerCase();
       const matchesQ =
         !query ||
-        m.name.toLowerCase().includes(query.toLowerCase()) ||
-        m.tagline.toLowerCase().includes(query.toLowerCase());
+        m.name.toLowerCase().includes(q) ||
+        (m.description || "").toLowerCase().includes(q);
       return matchesChip && matchesQ;
     });
-  }, [state.merchants, chip, query]);
+  }, [merchants, chip, query]);
 
-  const featured = state.merchants.filter(
-    (m) => m.featured && (!m.approvalStatus || m.approvalStatus === "approved"),
-  );
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#6C3BFF]" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="px-4 pt-8 text-center">
+        <p className="text-sm text-gray-500">Mağazalar yüklenemedi. Lütfen tekrar deneyin.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="gg-rise px-4 pb-6 pt-4" data-testid="customer-home">
@@ -82,83 +96,53 @@ export default function CustomerHome() {
         })}
       </div>
 
-      {/* Featured */}
-      {featured.length > 0 && chip === "all" && !query && (
-        <section className="mb-5">
-          <div className="mb-2 flex items-center gap-1.5">
-            <Sparkles className="h-4 w-4 text-[#6C3BFF]" />
-            <h2 className="text-sm font-bold uppercase tracking-wide text-gray-600">
-              Öne çıkanlar
-            </h2>
-          </div>
-          <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4">
-            {featured.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => navigate(`/customer/merchant/${m.id}`)}
-                className="tap relative h-40 w-64 shrink-0 overflow-hidden rounded-2xl bg-white shadow-sm"
-                data-testid={`featured-card-${m.id}`}
-              >
-                <img
-                  src={m.image}
-                  alt={m.name}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-3 text-left text-white">
-                  <div className="text-base font-bold">{m.name}</div>
-                  <div className="text-xs opacity-90">{m.tagline}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Merchants */}
+      {/* Merchants list */}
       <section>
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-600">
-          Yakındakiler
+          {merchants.length} Mağaza
         </h2>
         <div className="space-y-3">
-          {merchants.map((m) => (
+          {filtered.map((m) => (
             <button
               key={m.id}
               onClick={() => navigate(`/customer/merchant/${m.id}`)}
-              className="tap flex w-full items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 text-left shadow-sm hover:shadow-md"
+              className="tap flex w-full items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 text-left shadow-sm hover:shadow-md transition-shadow"
               data-testid={`merchant-card-${m.id}`}
             >
               <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-100">
-                <img
-                  src={m.image}
-                  alt={m.name}
-                  className="h-full w-full object-cover"
-                />
+                {m.logo_url ? (
+                  <img src={m.logo_url} alt={m.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#6C3BFF]/20 to-[#00C2A8]/20">
+                    <span className="text-xl font-extrabold text-[#6C3BFF]">
+                      {m.name.charAt(0)}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
                   <div className="truncate text-base font-bold">{m.name}</div>
                   <span className="rounded-full bg-[#6C3BFF]/10 px-2 py-0.5 text-[10px] font-bold uppercase text-[#6C3BFF]">
-                    {TYPE_LABELS[m.type] || m.type}
+                    {MERCHANT_TYPE_LABELS[m.type] || m.type || "Mağaza"}
                   </span>
                 </div>
                 <div className="truncate text-xs text-gray-500">
-                  {m.tagline}
+                  {m.description || m.address}
                 </div>
                 <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-gray-700">
-                  <span className="inline-flex items-center gap-1">
-                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                    {m.rating}
-                  </span>
                   <span className="inline-flex items-center gap-1 text-gray-500">
                     <Clock className="h-3.5 w-3.5" />
-                    {m.delivery}
+                    {m.avg_prep_minutes}–{m.avg_prep_minutes + 15} dk
                   </span>
+                  {!m.is_accepting_orders && (
+                    <span className="text-red-500">Kapalı</span>
+                  )}
                 </div>
               </div>
             </button>
           ))}
-          {merchants.length === 0 && (
+          {filtered.length === 0 && (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
               Aramanızla eşleşen mağaza yok.
             </div>

@@ -6,12 +6,22 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
-import { GapGelProvider } from "@/store/GapGelContext";
+
+import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
+import AuthGuard from "@/guards/AuthGuard";
+import RoleGuard from "@/guards/RoleGuard";
 
 import MobileShell from "@/layouts/MobileShell";
 import DesktopShell from "@/layouts/DesktopShell";
 
+// Auth pages
+import Login from "@/pages/auth/Login";
+import Register from "@/pages/auth/Register";
+
+// Customer pages
 import CustomerHome from "@/pages/customer/Home";
 import CustomerMerchant from "@/pages/customer/MerchantPage";
 import CustomerCart from "@/pages/customer/Cart";
@@ -20,83 +30,110 @@ import CustomerOrderDetail from "@/pages/customer/OrderDetail";
 import CustomerProfile from "@/pages/customer/Profile";
 import CustomerRate from "@/pages/customer/Rate";
 
+// Merchant pages
 import MerchantDashboard from "@/pages/merchant/Dashboard";
 import MerchantOnboarding from "@/pages/merchant/Onboarding";
 
+// Courier pages
 import CourierDeliveries from "@/pages/courier/Deliveries";
 import CourierHistory from "@/pages/courier/History";
 import CourierProfile from "@/pages/courier/Profile";
 import CourierOnboarding from "@/pages/courier/Onboarding";
 
+// Admin pages
 import AdminDashboard from "@/pages/admin/Dashboard";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,       // 1 min default
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export default function App() {
   return (
-    <div className="App">
-      <GapGelProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/customer" replace />} />
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <CartProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* ── Public routes ─────────────────────────────── */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-            {/* Customer - mobile shell */}
-            <Route element={<MobileShell variant="customer" />}>
-              <Route path="/customer" element={<CustomerHome />} />
-              <Route
-                path="/customer/merchant/:id"
-                element={<CustomerMerchant />}
-              />
-              <Route path="/customer/cart" element={<CustomerCart />} />
-              <Route path="/customer/orders" element={<CustomerOrders />} />
-              <Route
-                path="/customer/orders/:id"
-                element={<CustomerOrderDetail />}
-              />
-              <Route
-                path="/customer/orders/:id/rate"
-                element={<CustomerRate />}
-              />
-              <Route path="/customer/profile" element={<CustomerProfile />} />
-            </Route>
+              {/* ── Onboarding (auth required, no role restriction) */}
+              <Route element={<AuthGuard />}>
+                <Route path="/merchant/onboarding" element={<MerchantOnboarding />} />
+                <Route path="/courier/onboarding" element={<CourierOnboarding />} />
+              </Route>
 
-            {/* Courier - mobile shell */}
-            <Route element={<MobileShell variant="courier" />}>
-              <Route path="/courier" element={<CourierDeliveries />} />
-              <Route path="/courier/history" element={<CourierHistory />} />
-              <Route path="/courier/profile" element={<CourierProfile />} />
-            </Route>
+              {/* ── Customer routes ────────────────────────────── */}
+              <Route element={<AuthGuard />}>
+                <Route element={<RoleGuard allowed={["customer", "merchant_owner", "merchant_staff", "courier", "admin"]} />}>
+                  <Route element={<MobileShell variant="customer" />}>
+                    <Route path="/customer" element={<CustomerHome />} />
+                    <Route path="/customer/merchant/:id" element={<CustomerMerchant />} />
+                    <Route path="/customer/cart" element={<CustomerCart />} />
+                    <Route path="/customer/orders" element={<CustomerOrders />} />
+                    <Route path="/customer/orders/:id" element={<CustomerOrderDetail />} />
+                    <Route path="/customer/orders/:id/rate" element={<CustomerRate />} />
+                    <Route path="/customer/profile" element={<CustomerProfile />} />
+                  </Route>
+                </Route>
+              </Route>
 
-            {/* Onboarding wizards (no shell) */}
-            <Route
-              path="/merchant/onboarding"
-              element={<MerchantOnboarding />}
-            />
-            <Route
-              path="/courier/onboarding"
-              element={<CourierOnboarding />}
-            />
+              {/* ── Courier routes ─────────────────────────────── */}
+              <Route element={<AuthGuard />}>
+                <Route element={<RoleGuard allowed={["courier", "admin"]} />}>
+                  <Route element={<MobileShell variant="courier" />}>
+                    <Route path="/courier" element={<CourierDeliveries />} />
+                    <Route path="/courier/history" element={<CourierHistory />} />
+                    <Route path="/courier/profile" element={<CourierProfile />} />
+                  </Route>
+                </Route>
+              </Route>
 
-            {/* Merchant & Admin - desktop shell */}
-            <Route element={<DesktopShell />}>
-              <Route path="/merchant" element={<MerchantDashboard />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-            </Route>
+              {/* ── Merchant routes ────────────────────────────── */}
+              <Route element={<AuthGuard />}>
+                <Route element={<RoleGuard allowed={["merchant_owner", "merchant_staff", "admin"]} />}>
+                  <Route element={<DesktopShell />}>
+                    <Route path="/merchant" element={<MerchantDashboard />} />
+                  </Route>
+                </Route>
+              </Route>
 
-            <Route path="*" element={<Navigate to="/customer" replace />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster
-          position="top-center"
-          richColors
-          closeButton
-          theme="light"
-          toastOptions={{
-            classNames: {
-              toast:
-                "rounded-2xl border border-[#E5E7EB] shadow-lg bg-white text-[#1A1A1A] font-semibold",
-            },
-          }}
-        />
-      </GapGelProvider>
-    </div>
+              {/* ── Admin routes ───────────────────────────────── */}
+              <Route element={<AuthGuard />}>
+                <Route element={<RoleGuard allowed={["admin"]} />}>
+                  <Route element={<DesktopShell />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                  </Route>
+                </Route>
+              </Route>
+
+              {/* ── Default redirect ───────────────────────────── */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </BrowserRouter>
+
+          <Toaster
+            position="top-center"
+            richColors
+            closeButton
+            theme="light"
+            toastOptions={{
+              classNames: {
+                toast:
+                  "rounded-2xl border border-[#E5E7EB] shadow-lg bg-white text-[#1A1A1A] font-semibold",
+              },
+            }}
+          />
+        </CartProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
