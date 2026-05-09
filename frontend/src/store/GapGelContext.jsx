@@ -26,7 +26,7 @@ import {
   ORDER_STATES,
 } from "@/lib/orderMachine";
 
-const GapGelContext = createContext(null);
+const MarketplaceContext = createContext(null);
 
 const initialState = {
   role: "customer", // customer | merchant | courier | admin
@@ -561,7 +561,7 @@ function reducer(state, action) {
   }
 }
 
-export function GapGelProvider({ children }) {
+export function MarketplaceProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadInitial);
 
   // Persist to localStorage whenever core state changes
@@ -1487,12 +1487,12 @@ export function GapGelProvider({ children }) {
   };
 
   return (
-    <GapGelContext.Provider value={value}>{children}</GapGelContext.Provider>
+    <MarketplaceContext.Provider value={value}>{children}</MarketplaceContext.Provider>
   );
 }
 
-export function useGapGel() {
-  const ctx = useContext(GapGelContext);
-  if (!ctx) throw new Error("useGapGel must be used inside GapGelProvider");
+export function useMarketplace() {
+  const ctx = useContext(MarketplaceContext);
+  if (!ctx) throw new Error("useMarketplace must be used inside MarketplaceProvider");
   return ctx;
 }

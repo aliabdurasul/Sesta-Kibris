@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Pencil, Upload, Layers } from "lucide-react";
 import { toast } from "sonner";
-import { useGapGel } from "@/store/GapGelContext";
+import { useMarketplace } from "@/store/GapGelContext";
 
 function parseBulkCsv(text) {
   const rows = [];
@@ -42,7 +42,7 @@ export default function MerchantCatalog() {
     updateProduct,
     deleteProduct,
     bulkAddProducts,
-  } = useGapGel();
+  } = useMarketplace();
 
   const merchant = findMerchant(state.currentMerchantId);
   const products = merchant?.products || [];

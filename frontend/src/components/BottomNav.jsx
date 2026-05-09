@@ -1,10 +1,10 @@
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, ClipboardList, User, Bike } from "lucide-react";
-import { useGapGel } from "@/store/GapGelContext";
+import { useCart } from "@/hooks/useCart";
 
 export default function BottomNav({ variant }) {
-  const { cartCount } = useGapGel();
+  const { itemCount: cartCount } = useCart();
   const location = useLocation();
 
   const items =

@@ -1,5 +1,5 @@
 import React from "react";
-import { useGapGel } from "@/store/GapGelContext";
+import { useMarketplace } from "@/store/GapGelContext";
 import { Star, MessageCircle } from "lucide-react";
 
 function StarRow({ value }) {
@@ -18,7 +18,7 @@ function StarRow({ value }) {
 }
 
 export default function MerchantRatings() {
-  const { state, findMerchant, merchantRatings } = useGapGel();
+  const { state, findMerchant, merchantRatings } = useMarketplace();
   const merchant = findMerchant(state.currentMerchantId);
   const data = merchantRatings(merchant.id);
 

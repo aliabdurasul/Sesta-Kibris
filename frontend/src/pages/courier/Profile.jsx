@@ -1,11 +1,11 @@
 import React from "react";
-import { useGapGel } from "@/store/GapGelContext";
+import { useMarketplace } from "@/store/GapGelContext";
 import { Bike, DollarSign, TrendingUp, Calendar, Power, Building2, Globe } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { COURIER_TYPE_LABELS } from "@/data/seed";
 
 export default function CourierProfile() {
-  const { state, findCourier, findMerchant, courierEarnings, toggleCourierOnline } = useGapGel();
+  const { state, findCourier, findMerchant, courierEarnings, toggleCourierOnline } = useMarketplace();
   const me = findCourier(state.currentCourierId);
   const earn = courierEarnings(me.id);
   const online = me.online !== false;

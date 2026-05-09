@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { MarketplaceProvider } from "@/store/GapGelContext"; // Legacy filename, updated context
 import AuthGuard from "@/guards/AuthGuard";
 import RoleGuard from "@/guards/RoleGuard";
 
@@ -61,7 +62,8 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <BrowserRouter>
+          <MarketplaceProvider>
+            <BrowserRouter>
             <Routes>
               {/* ── Public routes ─────────────────────────────── */}
               <Route path="/login" element={<Login />} />
@@ -123,8 +125,9 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
+        </MarketplaceProvider>
 
-          <Toaster
+        <Toaster
             position="top-center"
             richColors
             closeButton

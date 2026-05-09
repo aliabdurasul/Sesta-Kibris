@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useGapGel } from "@/store/GapGelContext";
+import { useMarketplace } from "@/store/GapGelContext";
 import { ShoppingBag, Store, Bike, Shield } from "lucide-react";
 
 const ROLE_META = {
@@ -23,7 +23,7 @@ export default function RoleSwitcher() {
     setRole,
     setCurrentMerchant,
     setCurrentCourier,
-  } = useGapGel();
+  } = useMarketplace();
   const navigate = useNavigate();
   const location = useLocation();
 

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useGapGel } from "@/store/GapGelContext";
+import { useMarketplace } from "@/store/GapGelContext";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,7 +68,7 @@ export default function AdminDashboard() {
     resolveDispute,
     platformAnalytics,
     recentEvents,
-  } = useGapGel();
+  } = useMarketplace();
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");

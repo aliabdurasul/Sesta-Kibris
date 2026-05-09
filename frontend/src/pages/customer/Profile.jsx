@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useGapGel } from "@/store/GapGelContext";
+import { useMarketplace } from "@/store/GapGelContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +29,7 @@ export default function CustomerProfile() {
     removeAddress,
     setDefaultAddress,
     updateAddress,
-  } = useGapGel();
+  } = useMarketplace();
   const user = findCustomer(state.currentCustomerId);
   const addresses = user?.addresses || [];
 

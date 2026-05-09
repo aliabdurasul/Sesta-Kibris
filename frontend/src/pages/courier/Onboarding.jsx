@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGapGel } from "@/store/GapGelContext";
+import { useMarketplace } from "@/store/GapGelContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,7 +30,7 @@ const STEPS = [
 
 export default function CourierOnboarding() {
   const navigate = useNavigate();
-  const { submitCourierApplication } = useGapGel();
+  const { submitCourierApplication } = useMarketplace();
   const [step, setStep] = useState(0);
   const [otpSent, setOtpSent] = useState(false);
   const [otpInput, setOtpInput] = useState("");

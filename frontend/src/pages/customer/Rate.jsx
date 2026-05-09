@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useGapGel } from "@/store/GapGelContext";
+import { useMarketplace } from "@/store/GapGelContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Star, ArrowLeft } from "lucide-react";
@@ -33,7 +33,7 @@ function StarPicker({ value, onChange, testid }) {
 export default function CustomerRate() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { state, findMerchant, findCourier, submitRating } = useGapGel();
+  const { state, findMerchant, findCourier, submitRating } = useMarketplace();
   const order = state.orders.find((o) => o.id === id);
 
   const [merchantStars, setMerchantStars] = useState(5);

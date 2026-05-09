@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGapGel } from "@/store/GapGelContext";
+import { useMarketplace } from "@/store/GapGelContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,7 +34,7 @@ const STEPS = [
 
 export default function MerchantOnboarding() {
   const navigate = useNavigate();
-  const { submitMerchantApplication } = useGapGel();
+  const { submitMerchantApplication } = useMarketplace();
   const [step, setStep] = useState(0);
   const [data, setData] = useState({
     name: "",
