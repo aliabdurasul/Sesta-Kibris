@@ -14,7 +14,10 @@ const supabaseAnonKey =
   '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('[Supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  // Fail fast so missing envs surface a clear error in the UI.
+  throw new Error(
+    '[Supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY'
+  );
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
