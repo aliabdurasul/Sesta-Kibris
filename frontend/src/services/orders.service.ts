@@ -3,7 +3,7 @@
 // Business logic for order lifecycle. Calls domain rules first.
 // ══════════════════════════════════════════════════════════════
 
-import { supabase } from '../api/supabase';
+import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { canRoleTransition, canAssignCourier, isCourierEligible } from '../domain/orders.rules';
 import type { Order, OrderItem, OrderStatus, UserRole, CourierProfile } from '../types';
 
@@ -14,10 +14,19 @@ export class OrderError extends Error {
   }
 }
 
+const getClient = () => {
+  const client = getSupabaseBrowserClient();
+  if (!client) {
+    throw new OrderError('Supabase is not configured.');
+  }
+  return client;
+};
+
 // ─── Queries ─────────────────────────────────────────────────
 
 /** Fetch orders for the current customer. */
 export async function getCustomerOrders() {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('orders')
     .select('*, order_items(*)')
@@ -28,6 +37,7 @@ export async function getCustomerOrders() {
 
 /** Fetch orders for a merchant. */
 export async function getMerchantOrders(merchantId: string) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('orders')
     .select('*, order_items(*)')
@@ -39,6 +49,7 @@ export async function getMerchantOrders(merchantId: string) {
 
 /** Fetch orders assigned to a courier. */
 export async function getCourierOrders() {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('orders')
     .select('*, order_items(*)')
@@ -50,6 +61,7 @@ export async function getCourierOrders() {
 
 /** Fetch a single order by ID with items and state log. */
 export async function getOrder(orderId: string) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('orders')
     .select('*, order_items(*), order_state_log(*)') 
@@ -84,6 +96,7 @@ export async function placeOrder(params: {
   total: number;
   special_instructions: string | null;
 }) {
+  const supabase = getClient();
   // Insert order
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -146,6 +159,7 @@ export async function transitionOrder(
   toStatus: OrderStatus,
   currentRole: UserRole
 ) {
+  const supabase = getClient();
   // Fetch current order
   const { data: order, error: fetchError } = await supabase
     .from('orders')
@@ -187,6 +201,7 @@ export async function assignCourier(
   order: Order,
   merchantDeliveryMode: string
 ) {
+  const supabase = getClient();
   // Validate
   if (!canAssignCourier(order)) {
     throw new OrderError('Bu sipariş için kurye atanamaz');
@@ -219,6 +234,7 @@ export async function assignCourier(
 
 /** Cancel an order with reason. */
 export async function cancelOrder(orderId: string, reason: string, role: UserRole) {
+  const supabase = getClient();
   return transitionOrder(orderId, 'CANCELLED', role).then(async (order) => {
     await supabase
       .from('orders')
@@ -235,6 +251,7 @@ export function subscribeToOrders(
   filter: { column: string; value: string },
   onUpdate: (order: Order) => void
 ) {
+  const supabase = getClient();
   const channel = supabase
     .channel(`orders-${filter.column}-${filter.value}`)
     .on(
@@ -259,6 +276,7 @@ export function subscribeToOrders(
 // ─── Helpers ─────────────────────────────────────────────────
 
 async function emitEvent(type: string, entityType: string, entityId: string, payload: Record<string, unknown>) {
+  const supabase = getClient();
   // TODO: Stream events to audit logs/analytics and enqueue background jobs (dispatch, SLA alerts).
   const { data: { user } } = await supabase.auth.getUser();
   await supabase.from('events').insert({

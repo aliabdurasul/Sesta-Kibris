@@ -8,6 +8,9 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "SestaKibris",
   description: "Turkish Marketplace MVP",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export const viewport = {

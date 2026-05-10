@@ -1,1 +1,4 @@
-export { supabase } from "../api/supabase";
+export {
+	getSupabaseBrowserClient,
+	requireSupabaseBrowserClient,
+} from "../api/supabase";

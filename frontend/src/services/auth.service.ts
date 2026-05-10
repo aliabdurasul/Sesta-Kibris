@@ -3,7 +3,7 @@
 // Handles login, signup, logout, session, and role fetching.
 // ══════════════════════════════════════════════════════════════
 
-import { supabase } from '../api/supabase';
+import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import type { Profile, UserRoleRow, MerchantUser, UserRole } from '../types';
 
 export class AuthError extends Error {
@@ -13,8 +13,17 @@ export class AuthError extends Error {
   }
 }
 
+const getClient = () => {
+  const client = getSupabaseBrowserClient();
+  if (!client) {
+    throw new AuthError('Supabase is not configured.');
+  }
+  return client;
+};
+
 /** Sign up with email + password. Auto-creates profile + customer role via DB trigger. */
 export async function signUp(email: string, password: string, fullName: string) {
+  const supabase = getClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -28,6 +37,7 @@ export async function signUp(email: string, password: string, fullName: string) 
 
 /** Sign in with email + password. */
 export async function signIn(email: string, password: string) {
+  const supabase = getClient();
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -38,12 +48,14 @@ export async function signIn(email: string, password: string) {
 
 /** Sign out and clear session. */
 export async function signOut() {
+  const supabase = getClient();
   const { error } = await supabase.auth.signOut();
   if (error) throw new AuthError(error.message);
 }
 
 /** Get current session (or null). */
 export async function getSession() {
+  const supabase = getClient();
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error) throw new AuthError(error.message);
   return session;
@@ -51,6 +63,7 @@ export async function getSession() {
 
 /** Fetch the user's profile from profiles table. */
 export async function getProfile(userId: string): Promise<Profile | null> {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -62,6 +75,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 /** Fetch all roles for a user. */
 export async function getUserRoles(userId: string): Promise<UserRole[]> {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('user_roles')
     .select('role')
@@ -73,6 +87,7 @@ export async function getUserRoles(userId: string): Promise<UserRole[]> {
 
 /** Fetch merchant memberships for a user. */
 export async function getMerchantMemberships(userId: string): Promise<MerchantUser[]> {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('merchant_users')
     .select('*')
@@ -84,6 +99,7 @@ export async function getMerchantMemberships(userId: string): Promise<MerchantUs
 
 /** Update user profile. */
 export async function updateProfile(userId: string, updates: Partial<Profile>) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -96,6 +112,7 @@ export async function updateProfile(userId: string, updates: Partial<Profile>) {
 
 /** Listen to auth state changes. Returns unsubscribe function. */
 export function onAuthStateChange(callback: (event: string, session: unknown) => void) {
+  const supabase = getClient();
   const { data: { subscription } } = supabase.auth.onAuthStateChange(callback);
   return subscription;
 }

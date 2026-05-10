@@ -2,12 +2,20 @@
 // Service Layer — Products
 // ══════════════════════════════════════════════════════════════
 
-import { supabase } from '../api/supabase';
+import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import type { Product } from '../types';
 
 export class ProductError extends Error {
   constructor(message: string) { super(message); this.name = 'ProductError'; }
 }
+
+const getClient = () => {
+  const client = getSupabaseBrowserClient();
+  if (!client) {
+    throw new ProductError('Supabase is not configured.');
+  }
+  return client;
+};
 
 /** Create a product for a merchant. */
 export async function createProduct(params: {
@@ -19,6 +27,7 @@ export async function createProduct(params: {
   compare_price?: number;
   image_url?: string;
 }) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('products')
     .insert({
@@ -38,6 +47,7 @@ export async function createProduct(params: {
 
 /** Update a product. */
 export async function updateProduct(id: string, updates: Partial<Product>) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('products')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -50,6 +60,7 @@ export async function updateProduct(id: string, updates: Partial<Product>) {
 
 /** Delete a product (soft: set is_available = false). */
 export async function deleteProduct(id: string) {
+  const supabase = getClient();
   const { error } = await supabase
     .from('products')
     .update({ is_available: false })
@@ -60,6 +71,7 @@ export async function deleteProduct(id: string) {
 /** Upload product image to Supabase Storage. Returns public URL. */
 // TODO: Add signed uploads, size validation, and lifecycle rules for production storage.
 export async function uploadProductImage(merchantId: string, file: File): Promise<string> {
+  const supabase = getClient();
   const ext = file.name.split('.').pop() || 'jpg';
   const path = `${merchantId}/${Date.now()}.${ext}`;
 
@@ -78,6 +90,7 @@ export async function uploadProductImage(merchantId: string, file: File): Promis
 
 /** Create a category. */
 export async function createCategory(merchantId: string, name: string, emoji?: string) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('categories')
     .insert({ merchant_id: merchantId, name, emoji: emoji || null })

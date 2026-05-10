@@ -48,6 +48,7 @@
     "next": "^15.1.0",
     "react-resizable-panels": "^3.0.1",
     "@supabase/supabase-js": "^2.39.0",
+    "@supabase/ssr": "^0.5.2",
     "@tanstack/react-query": "^5.74.4",
     "recharts": "^3.6.0",
     "sonner": "^2.0.3",

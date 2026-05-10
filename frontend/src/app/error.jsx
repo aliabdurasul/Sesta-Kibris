@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { publicEnvState } from "@/lib/env";
 
 export default function Error({ error, reset }) {
-  const isSupabaseEnvError =
-    typeof error?.message === "string" &&
-    error.message.includes("NEXT_PUBLIC_SUPABASE");
+  const isSupabaseEnvError = !publicEnvState.isSupabaseConfigured;
 
   useEffect(() => {
     console.error(error);
@@ -22,7 +21,7 @@ export default function Error({ error, reset }) {
         </h1>
         <p className="mt-4 text-base text-[#4B5563]">
           {isSupabaseEnvError
-            ? "Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel."
+            ? "Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel, then redeploy."
             : "A client-side error occurred while loading this page."}
         </p>
         <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">

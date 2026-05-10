@@ -2,7 +2,7 @@
 // Service Layer — Merchants
 // ══════════════════════════════════════════════════════════════
 
-import { supabase } from '../api/supabase';
+import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { generateSlug } from '../domain/merchants.rules';
 import type { Merchant, Product, Category } from '../types';
 
@@ -10,10 +10,19 @@ export class MerchantError extends Error {
   constructor(message: string) { super(message); this.name = 'MerchantError'; }
 }
 
+const getClient = () => {
+  const client = getSupabaseBrowserClient();
+  if (!client) {
+    throw new MerchantError('Supabase is not configured.');
+  }
+  return client;
+};
+
 // ─── Queries ─────────────────────────────────────────────────
 
 /** Fetch all active merchants (public). */
 export async function getActiveMerchants() {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('merchants')
     .select('*')
@@ -25,6 +34,7 @@ export async function getActiveMerchants() {
 
 /** Fetch a single merchant by slug. */
 export async function getMerchantBySlug(slug: string) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('merchants')
     .select('*')
@@ -37,6 +47,7 @@ export async function getMerchantBySlug(slug: string) {
 
 /** Fetch a single merchant by ID. */
 export async function getMerchantById(id: string) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('merchants')
     .select('*')
@@ -48,6 +59,7 @@ export async function getMerchantById(id: string) {
 
 /** Fetch products for a merchant. */
 export async function getMerchantProducts(merchantId: string) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('products')
     .select('*, categories(*)')
@@ -60,6 +72,7 @@ export async function getMerchantProducts(merchantId: string) {
 
 /** Fetch categories for a merchant. */
 export async function getMerchantCategories(merchantId: string) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('categories')
     .select('*')
@@ -82,6 +95,7 @@ export async function createMerchant(params: {
   delivery_mode?: string;
   owner_user_id: string;
 }) {
+  const supabase = getClient();
   const slug = generateSlug(params.name) + '-' + Date.now().toString(36).slice(-4);
 
   const { data: merchant, error } = await supabase
@@ -120,6 +134,7 @@ export async function createMerchant(params: {
 
 /** Update merchant details. */
 export async function updateMerchant(id: string, updates: Partial<Merchant>) {
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('merchants')
     .update({ ...updates, updated_at: new Date().toISOString() })
