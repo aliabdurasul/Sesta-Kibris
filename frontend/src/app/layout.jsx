@@ -3,6 +3,8 @@ import "@/index.css";
 import "@/App.css";
 import Providers from "./providers";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "SestaKibris",
   description: "Turkish Marketplace MVP",
