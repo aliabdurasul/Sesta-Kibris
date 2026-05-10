@@ -3,13 +3,13 @@ import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logPublicEnvDiagnostics, publicEnv, publicEnvState } from "@/lib/env";
 
-export function createSupabaseServerClient(): SupabaseClient | null {
+export async function createSupabaseServerClient(): Promise<SupabaseClient | null> {
   if (!publicEnvState.isSupabaseConfigured) {
     logPublicEnvDiagnostics("supabase-server");
     return null;
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   return createServerClient(
     publicEnv.supabaseUrl,
