@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import CourierOnboarding from "@/pages/courier/Onboarding";
+import CourierOnboarding from "@/views/courier/Onboarding";
 
 export default function Page() {
   return <CourierOnboarding />;

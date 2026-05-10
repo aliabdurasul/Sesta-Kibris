@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import MerchantDashboard from "@/pages/merchant/Dashboard";
+import MerchantDashboard from "@/views/merchant/Dashboard";
 
 export default function Page() {
   return <MerchantDashboard />;

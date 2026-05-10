@@ -19,33 +19,33 @@ import MobileShell from "@/layouts/MobileShell";
 import DesktopShell from "@/layouts/DesktopShell";
 
 // Auth pages
-import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/Register";
+import Login from "@/views/auth/Login";
+import Register from "@/views/auth/Register";
 
 // Customer pages
-import CustomerHome from "@/pages/customer/Home";
-import CustomerMarkets from "@/pages/customer/Markets";
-import CustomerMerchant from "@/pages/customer/MerchantPage";
-import CustomerCart from "@/pages/customer/Cart";
-import CustomerCheckout from "@/pages/customer/Checkout";
-import OrderSuccess from "@/pages/customer/OrderSuccess";
-import CustomerOrders from "@/pages/customer/Orders";
-import CustomerOrderDetail from "@/pages/customer/OrderDetail";
-import CustomerProfile from "@/pages/customer/Profile";
-import CustomerRate from "@/pages/customer/Rate";
+import CustomerHome from "@/views/customer/Home";
+import CustomerMarkets from "@/views/customer/Markets";
+import CustomerMerchant from "@/views/customer/MerchantPage";
+import CustomerCart from "@/views/customer/Cart";
+import CustomerCheckout from "@/views/customer/Checkout";
+import OrderSuccess from "@/views/customer/OrderSuccess";
+import CustomerOrders from "@/views/customer/Orders";
+import CustomerOrderDetail from "@/views/customer/OrderDetail";
+import CustomerProfile from "@/views/customer/Profile";
+import CustomerRate from "@/views/customer/Rate";
 
 // Merchant pages
-import MerchantDashboard from "@/pages/merchant/Dashboard";
-import MerchantOnboarding from "@/pages/merchant/Onboarding";
+import MerchantDashboard from "@/views/merchant/Dashboard";
+import MerchantOnboarding from "@/views/merchant/Onboarding";
 
 // Courier pages
-import CourierDeliveries from "@/pages/courier/Deliveries";
-import CourierHistory from "@/pages/courier/History";
-import CourierProfile from "@/pages/courier/Profile";
-import CourierOnboarding from "@/pages/courier/Onboarding";
+import CourierDeliveries from "@/views/courier/Deliveries";
+import CourierHistory from "@/views/courier/History";
+import CourierProfile from "@/views/courier/Profile";
+import CourierOnboarding from "@/views/courier/Onboarding";
 
 // Admin pages
-import AdminDashboard from "@/pages/admin/Dashboard";
+import AdminDashboard from "@/views/admin/Dashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
