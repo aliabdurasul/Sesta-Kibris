@@ -1,9 +1,11 @@
 import React from "react";
-import { ORDER_STATES, STATE_LABELS, stateIndex } from "@/lib/orderMachine";
+import { ORDER_STATES, STATE_LABELS, normalizeStatus, stateIndex } from "@/lib/orderMachine";
 import { Check } from "lucide-react";
 
 export default function OrderTimeline({ status, cancelReason }) {
-  if (status === "cancelled") {
+  const normalizedStatus = normalizeStatus(status);
+
+  if (normalizedStatus === "cancelled") {
     return (
       <div
         className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"
@@ -13,7 +15,7 @@ export default function OrderTimeline({ status, cancelReason }) {
       </div>
     );
   }
-  const currentIdx = stateIndex(status);
+  const currentIdx = stateIndex(normalizedStatus);
 
   return (
     <ol className="relative space-y-5 pl-2" data-testid="order-timeline">

@@ -20,8 +20,33 @@ export const STATE_LABELS = {
   cancelled: "İptal edildi",
 };
 
+const STATUS_ALIASES = {
+  PLACED: "created",
+  ACCEPTED: "accepted",
+  PREPARING: "preparing",
+  READY: "ready",
+  ASSIGNED: "ready",
+  PICKED_UP: "out_for_delivery",
+  OUT_FOR_DELIVERY: "out_for_delivery",
+  DELIVERED: "delivered",
+  CANCELLED: "cancelled",
+  FAILED_DELIVERY: "out_for_delivery",
+  REFUNDED: "cancelled",
+};
+
+export function normalizeStatus(status) {
+  if (!status) return status;
+  const key = String(status);
+  return STATUS_ALIASES[key] || key.toLowerCase();
+}
+
+export function getStateLabel(status) {
+  const normalized = normalizeStatus(status);
+  return STATE_LABELS[normalized] || STATE_LABELS[status] || status;
+}
+
 export function stateIndex(s) {
-  return ORDER_STATES.indexOf(s);
+  return ORDER_STATES.indexOf(normalizeStatus(s));
 }
 
 // A strict transition is only allowed between consecutive states.

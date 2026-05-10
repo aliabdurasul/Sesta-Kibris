@@ -1,5 +1,5 @@
 import React from "react";
-import { STATE_LABELS } from "@/lib/orderMachine";
+import { getStateLabel, normalizeStatus } from "@/lib/orderMachine";
 
 const STYLES = {
   created: "bg-gray-100 text-gray-700",
@@ -13,14 +13,16 @@ const STYLES = {
 };
 
 export default function StatusBadge({ status }) {
+  const normalizedStatus = normalizeStatus(status);
+
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
-        STYLES[status] || "bg-gray-100 text-gray-700"
+        STYLES[normalizedStatus] || "bg-gray-100 text-gray-700"
       }`}
       data-testid={`order-status-${status}`}
     >
-      {STATE_LABELS[status] || status}
+      {getStateLabel(status)}
     </span>
   );
 }

@@ -58,6 +58,7 @@ export async function deleteProduct(id: string) {
 }
 
 /** Upload product image to Supabase Storage. Returns public URL. */
+// TODO: Add signed uploads, size validation, and lifecycle rules for production storage.
 export async function uploadProductImage(merchantId: string, file: File): Promise<string> {
   const ext = file.name.split('.').pop() || 'jpg';
   const path = `${merchantId}/${Date.now()}.${ext}`;

@@ -10,6 +10,7 @@ export class PaymentError extends Error {
 }
 
 /** Create a COD payment record when order is placed. */
+// TODO: Replace COD stub with real provider integration + webhook verification and idempotency.
 export async function createCodPayment(orderId: string, amount: number) {
   const { data, error } = await supabase.from('payments').insert({
     order_id: orderId, provider: 'cod', status: 'pending',

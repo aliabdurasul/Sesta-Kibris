@@ -11,6 +11,7 @@ export default function Providers({ children }) {
   // In Next.js, it's best to create the queryClient inside the component
   // to avoid sharing cache across requests if we ever do SSR, but for our SPA migration
   // it's fine to just hold it in state.
+  // TODO: Add feature flag and observability providers for production rollouts.
   const [queryClient] = useState(
     () =>
       new QueryClient({

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ORDER_STATES, STATE_LABELS, stateIndex } from "@/lib/orderMachine";
+import { ORDER_STATES, getStateLabel, normalizeStatus, stateIndex } from "@/lib/orderMachine";
 import { calculateEta } from "@/lib/eta";
 import { CheckCircle2, ShoppingBag, ChefHat, Package, Bike, Home, CreditCard, Clock } from "lucide-react";
 
@@ -16,15 +16,16 @@ const ICONS = {
 
 export default function LiveProgressStrip({ status, cancelled, order, merchant }) {
   const [, setTick] = useState(0);
+  const normalizedStatus = normalizeStatus(status);
 
   // Tick every 30s to refresh ETA display
   useEffect(() => {
-    if (cancelled || status === "delivered") return;
+    if (cancelled || normalizedStatus === "delivered") return;
     const id = setInterval(() => setTick((t) => t + 1), 30000);
     return () => clearInterval(id);
-  }, [cancelled, status]);
+  }, [cancelled, normalizedStatus]);
 
-  if (cancelled) {
+  if (cancelled || normalizedStatus === "cancelled") {
     return (
       <div
         className="rounded-2xl border border-red-200 bg-red-50 p-3 text-center text-xs font-bold text-red-700"
@@ -34,10 +35,10 @@ export default function LiveProgressStrip({ status, cancelled, order, merchant }
       </div>
     );
   }
-  const idx = Math.max(0, stateIndex(status));
+  const idx = Math.max(0, stateIndex(normalizedStatus));
   const total = ORDER_STATES.length - 1;
   const pct = Math.round((idx / total) * 100);
-  const isDone = status === "delivered";
+  const isDone = normalizedStatus === "delivered";
   const eta = order && merchant ? calculateEta(order, merchant) : null;
 
   return (
@@ -53,7 +54,7 @@ export default function LiveProgressStrip({ status, cancelled, order, merchant }
           className="text-xs font-bold text-[#6C3BFF]"
           data-testid="live-progress-label"
         >
-          {STATE_LABELS[status] || status}
+          {getStateLabel(status)}
         </div>
       </div>
 

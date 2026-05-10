@@ -259,6 +259,7 @@ export function subscribeToOrders(
 // ─── Helpers ─────────────────────────────────────────────────
 
 async function emitEvent(type: string, entityType: string, entityId: string, payload: Record<string, unknown>) {
+  // TODO: Stream events to audit logs/analytics and enqueue background jobs (dispatch, SLA alerts).
   const { data: { user } } = await supabase.auth.getUser();
   await supabase.from('events').insert({
     type,
