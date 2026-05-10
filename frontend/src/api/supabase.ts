@@ -4,5 +4,4 @@
 
 export {
   getSupabaseBrowserClient,
-  requireSupabaseBrowserClient,
 } from "@/lib/supabase/client";

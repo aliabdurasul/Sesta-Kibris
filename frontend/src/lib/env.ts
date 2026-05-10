@@ -1,32 +1,24 @@
 import { z } from "zod";
 
-type SupabaseEnvSource = "next-public" | "react-app" | "missing";
+type SupabaseEnvSource = "next-public" | "missing";
 
 type PublicEnvState = {
   isSupabaseConfigured: boolean;
   missingNextPublic: string[];
-  hasReactAppFallback: boolean;
   issues: string[];
 };
 
 const raw = {
   nextPublicUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   nextPublicAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-  reactAppUrl: process.env.REACT_APP_SUPABASE_URL ?? "",
-  reactAppAnonKey: process.env.REACT_APP_SUPABASE_ANON_KEY ?? "",
 };
 
 const hasNextPublic = Boolean(raw.nextPublicUrl && raw.nextPublicAnonKey);
-const hasReactApp = Boolean(raw.reactAppUrl && raw.reactAppAnonKey);
 
 const resolved = {
-  supabaseUrl: raw.nextPublicUrl || raw.reactAppUrl || "",
-  supabaseAnonKey: raw.nextPublicAnonKey || raw.reactAppAnonKey || "",
-  source: (hasNextPublic
-    ? "next-public"
-    : hasReactApp
-    ? "react-app"
-    : "missing") as SupabaseEnvSource,
+  supabaseUrl: raw.nextPublicUrl,
+  supabaseAnonKey: raw.nextPublicAnonKey,
+  source: (hasNextPublic ? "next-public" : "missing") as SupabaseEnvSource,
 };
 
 const publicEnvSchema = z.object({
@@ -53,7 +45,6 @@ export const publicEnv = {
 export const publicEnvState: PublicEnvState = {
   isSupabaseConfigured: validation.success,
   missingNextPublic,
-  hasReactAppFallback: hasReactApp,
   issues: validation.success
     ? []
     : validation.error.issues.map((issue) => issue.message),
@@ -67,7 +58,6 @@ export function logPublicEnvDiagnostics(context: string) {
   console.warn(`[Env] Supabase public env missing in ${context}.`, {
     missingNextPublic: publicEnvState.missingNextPublic,
     supabaseSource: publicEnv.supabaseSource,
-    hasReactAppFallback: publicEnvState.hasReactAppFallback,
     issues: publicEnvState.issues,
   });
 }

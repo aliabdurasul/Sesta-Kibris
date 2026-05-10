@@ -32,12 +32,3 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
   return browserClient;
 }
 
-export function requireSupabaseBrowserClient(): SupabaseClient {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new Error(
-      "[Supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY"
-    );
-  }
-  return client;
-}
