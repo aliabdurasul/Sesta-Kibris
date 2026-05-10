@@ -18,13 +18,18 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     }
   },
   "include": [
-    "src"
+    "src",
+    "next-env.d.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }
