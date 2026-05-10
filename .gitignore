@@ -124,3 +124,5 @@ credentials.json
 *.key
 .credentials
 frontend/node_modules/.cache/default-development/10.pack
+!.env.example
+!frontend/.env.example
