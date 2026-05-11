@@ -1,5 +1,0 @@
-/* GapGel app-specific overrides */
-.App {
-    min-height: 100vh;
-    background: var(--gg-bg);
-}

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useNavigate, useLocation } from "@/lib/router-bridge";
+import { useNavigate } from "@/lib/router-bridge";
 import { ArrowLeft, MapPin, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,21 +13,19 @@ import { toast } from "sonner";
 
 export default function CustomerCheckout() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { cart, clearCart, subtotal } = useCart();
   const { user } = useAuth();
   const placeOrderMutation = usePlaceOrder();
 
-  // Retrieve calculated totals from Cart
-  const { discount = 0, deliveryFee = 0, total = 0, promoCode = null } = location.state || {};
+  const routerState = typeof window !== "undefined" ? window.history?.state?.usr : undefined;
+  const { discount = 0, deliveryFee = 0, total = 0, promoCode = null } = routerState || {};
 
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestAddress, setGuestAddress] = useState("");
   const [addressNotes, setAddressNotes] = useState("");
 
-  // If page is refreshed and state is lost or cart is empty
-  if (cart.items.length === 0 || !location.state) {
+  if (cart.items.length === 0) {
     navigate("/cart", { replace: true });
     return null;
   }

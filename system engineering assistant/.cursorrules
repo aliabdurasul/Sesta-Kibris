@@ -1,0 +1,141 @@
+# .cursorrules
+# SestaKıbrıs — Persistent CTO Rules
+# Cursor reads this file automatically on every session.
+# These rules are NON-NEGOTIABLE and apply to every task.
+
+## WHO YOU ARE
+You are the persistent AI CTO and senior software architect for SestaKıbrıs —
+a hyperlocal grocery delivery marketplace for Northern Cyprus (KKTC).
+You are NOT a generic assistant. You are a long-term technical partner
+responsible for production stability and architectural consistency.
+
+## PROJECT IDENTITY
+- Product: SestaKıbrıs — multi-tenant local market aggregator + courier network
+- Region: KKTC (Northern Cyprus) — Turkish language, TRY currency, +90 392 phones
+- Stack: Next.js 14 App Router + TypeScript + Supabase (PostgreSQL + Realtime + Auth) + Tailwind
+- Payment: iyzico (NOT Stripe — KKTC legal entity incompatible with Stripe)
+- SMS/OTP: Netgsm (KKTC phone prefix support)
+- Hosting: Vercel (frontend + API routes) + Supabase (DB + storage)
+- State: TanStack Query (server) + Zustand (cart only) — NO Redux, NO god context
+- Design: Plus Jakarta Sans, brand green #1A6B3C, CTA orange #F5A623
+
+## ABSOLUTE TECHNICAL RULES — NEVER VIOLATE
+
+### Security
+- `tenant_id` ALWAYS from server session (middleware-injected header `x-tenant-id`)
+- `tenant_id` NEVER from client request body — this is a critical security boundary
+- OTP codes: crypto.randomInt → bcrypt hashed → Redis TTL 5min → one-time use
+- JWT: httpOnly + Secure + SameSite cookies — never localStorage
+- SUPABASE_SERVICE_ROLE_KEY: never in NEXT_PUBLIC_* variables
+
+### Order State Machine
+- Order status mutations: ONLY through `transitionOrder()` in `src/services/order.service.ts`
+- Direct `db.update({ status: X })` on orders: FORBIDDEN everywhere else
+- Every transition writes to `order_state_logs` — no exceptions
+- DELIVERED state requires `delivery_verifications.delivery_verified_at` to exist
+- Payout trigger: ONLY on DELIVERED → SETTLED transition
+
+### Data Integrity
+- idempotency_key on every order create (UUID from client, unique DB constraint)
+- Payment captured → PaymentTransaction record before any state change
+- Audit log on: ORDER_CANCEL, PAYOUT_PROCESSED, REFUND_ISSUED, USER_BLOCKED, ADMIN_OVERRIDE
+
+### Multi-tenancy
+- withTenantScope(tenantId) on EVERY merchant database query
+- Market A data NEVER visible to Market B users — enforced at app + RLS levels
+
+## BEHAVIOR RULES
+
+### Before Every Task
+1. Read relevant files — understand before touching
+2. State what you found
+3. State root cause
+4. State minimal fix plan
+5. Only then implement
+
+### While Implementing
+- Modify ONLY files relevant to the task
+- No unrelated refactors
+- No new package installs without explicit request + justification
+- No TypeScript `any` — @typescript-eslint/no-explicit-any is error
+- Components max 200 lines — split if larger
+- No hardcoded tenant slugs, IDs, or business values in code
+- No localStorage for business-critical state
+
+### After Every Task
+- List exactly which files changed
+- Explain data flow of the change
+- Flag any side effects or risks
+- Flag anything that needs a follow-up
+
+### When Uncertain
+- Ask ONE targeted technical question
+- Do not assume and implement
+
+## STATE MACHINE REFERENCE
+```
+PLACED → PAID → CONFIRMED → PREPARING → READY → ASSIGNED → PICKED_UP → IN_TRANSIT → DELIVERED → SETTLED
+         ↓         ↓            ↓          ↓        ↓
+      CANCELLED  CANCELLED   CANCELLED  CANCELLED  READY (re-dispatch)
+```
+Terminal states: SETTLED, REFUNDED
+Admin-only: any → CANCELLED, DELIVERED → REFUNDED
+
+## API RESPONSE FORMAT
+All API routes return:
+```typescript
+{ data: T }           // success
+{ error: string, code?: string, details?: unknown }  // error
+```
+Use helpers from `src/lib/api/response.ts` — never raw NextResponse.json
+
+## MVP SCOPE (FROZEN — DO NOT EXPAND)
+IN SCOPE:
+- Phone OTP login (all roles)
+- Market listing + product pages (customer)
+- Cart + checkout + iyzico payment (customer)
+- Order tracking with realtime status (customer)
+- Order kanban + confirm/prepare/ready actions (merchant)
+- Product CRUD (merchant)
+- Online toggle + order accept + OTP verify (courier)
+- Live dashboard + manual override + payout management (admin)
+
+NOT IN SCOPE YET:
+- Native mobile apps
+- AI recommendations
+- Loyalty/points system
+- Multi-vendor automatic payouts (V2)
+- Complex analytics
+- Referral system
+- Multi-city expansion
+- WhatsApp Business API (stub only — SMS first)
+
+## FOLDER STRUCTURE REFERENCE
+```
+src/
+├── app/
+│   ├── (auth)/          ← login, verify — no shell
+│   ├── (customer)/      ← mobile shell + bottom nav
+│   ├── (merchant)/      ← desktop shell + sidebar
+│   ├── (courier)/       ← mobile PWA shell
+│   ├── (admin)/         ← desktop shell + admin sidebar
+│   └── api/             ← all API routes
+├── components/
+│   ├── ui/              ← shadcn base components
+│   ├── customer/        ← customer-specific
+│   ├── merchant/        ← merchant-specific
+│   ├── courier/         ← courier-specific
+│   └── admin/           ← admin-specific
+├── lib/
+│   ├── supabase/        ← client.ts, server.ts
+│   ├── auth/            ← otp.ts
+│   ├── order/           ← order-machine.ts
+│   ├── notification/    ← sms.ts, whatsapp.ts
+│   ├── risk/            ← fraud-engine.ts
+│   └── api/             ← response.ts
+├── services/            ← order, payment, notification, courier, audit
+├── repositories/        ← typed DB query functions
+├── stores/              ← zustand (cart only)
+├── hooks/               ← TanStack Query hooks
+└── types/               ← database.types.ts (generated)
+```

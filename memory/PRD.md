@@ -1,65 +1,227 @@
-# HADE — Hyperlocal Marketplace + Logistics OS (formerly GapGel)
+# SESTAKIBRIS_PROJECT_MEMORY.md
 
-## Problem Statement (verbatim)
-Build a complete multi-role frontend application. HADE is a hyperlocal marketplace + logistics operating system for Northern Cyprus (TRNC). Supports Müşteri (Customer), Satıcı (Merchant), Kurye (Courier), and Yönetici (Admin). Full order lifecycle simulated end-to-end. Pure frontend, in-memory + localStorage. UI in Turkish.
+## Project Identity
 
-## Architecture
-- Pure React + Context (`GapGelContext.jsx`) + useReducer + localStorage hydration (key: `gapgel-state-v1`).
-- No backend. Auth, payments, push notifications all simulated in Context.
-- Pre-seeded: 3 merchants (Fresh Market / Aqua Express / GasGo), 3 couriers (Ali Yılmaz / Maya Çelik / Rauf Patel), 1 customer (Demo Kullanıcı).
-- Top-bar role switcher (shadcn `<Select>`); mobile shell for Müşteri/Kurye, desktop tabs/sidebar for Satıcı/Yönetici.
-- Auto-timers: 30s otomatik iptal for unaccepted paid orders, 15s yeniden atama for unpicked-up courier orders.
-- Constants: `COURIER_FEE_PER_DELIVERY=$2`, `DELIVERY_FEE=$1.50`, `AUTO_CANCEL_MS=30000`, `REASSIGN_MS=15000`.
+SestaKıbrıs is a hyperlocal marketplace + logistics operating system for Northern Cyprus (KKTC/TRNC).
 
-## Localization
-- Full Turkish UI — all visible strings, status labels, toasts, dialogs, button labels, empty states. Type labels: market→Market, water→Su, gas→Tüp.
-- Status labels (`STATUS_LABELS` in seed.js): Oluşturuldu / Ödendi / Kabul Edildi / Hazırlanıyor / Hazır / Yolda / Teslim Edildi / İptal Edildi.
-- All `data-testid`s remain English/kebab-case for testability.
+Primary Goal:
+Launch an operational marketplace MVP with one real market first, then expand gradually.
 
-## What's been implemented (cumulative)
-- **Iter 1 (MVP)**: 4-role system, full order lifecycle, customer/merchant/courier/admin screens, auto-dispatch, water/gas self-delivery, role-based visibility.
-- **Iter 2**: Customer rating, courier earnings widget, admin CSV export & 7-day chart, merchant catalog CRUD + bulk CSV, OTP-gated delivery, tap-to-call, substitution flow, partial refund, 30s auto-cancel, 15s reassign, merchant confirmation rate, cancelled state.
-- **Iter 3**: localStorage persistence, per-merchant ratings tab, customer reorder CTA, full Turkish translation, reset-demo button.
-- **Iter 4 (HADE rebrand + ops upgrade)** — Feb 2026:
-  - 🏷️ Rebrand GapGel → HADE (logo, "hiperlokal OS" tagline, order IDs `HADE-1001+`).
-  - 🚚 Per-merchant `deliveryMode`: `platform_only` / `merchant_only` / `hybrid`.
-  - ✅ Merchant `approvalStatus`: `approved` / `pending` / `suspended`, with admin approve/suspend buttons.
-  - 📦 Product `stockStatus`: `in_stock` / `out_of_stock` / `hidden`.
-  - 🟢 Courier `online` toggle (offline couriers excluded from auto-dispatch).
-  - 🎟️ Promo codes: `HADE10` = 10% off (cart promo input + applied label).
-  - 📈 Platform analytics: GMV (delivered orders), repeat-customer count, courier utilization %, total refunds.
-  - 💯 Composite merchant health score with histogram per merchant.
-  - 🛠️ Admin merchants panel with delivery-mode select + approval toggle per row.
-  - Tested via Playwright on deployed preview: **13/13 features PASS** (`/app/test_reports/iteration_4.json`).
-- **Iter 4 polish (this run)**:
-  - Fixed Recharts `width(-1)/height(-1)` console warning by adding `minHeight={200}` and explicit `minHeight: 224` on parent container in `RevenueChart.jsx`.
-  - Added `STATUS_LABELS` Turkish map and used it in admin force-status toast (no more raw English status keys leaking into UI).
+Target Roles:
 
-## Known Notes
-- localStorage key versioned (`gapgel-state-v1`) so future schema changes can bump key.
-- All `data-testid` attributes stayed English for tester compatibility.
-- AUTO_CANCEL_MS=30000ms / REASSIGN_MS=15000ms — for production raise to 600000/180000 (10min/3min).
+* Müşteri (Customer)
+* Market/Satıcı (Merchant)
+* Kurye (Courier)
+* Yönetici (Admin)
 
-## Prioritized Backlog
-### P1
-- 6-role split: Merchant Owner vs Merchant Staff, Platform Courier vs Merchant Courier.
-- Multi-address system for customers (saved addresses, delivery notes).
-- Customer notifications toast queue for status changes.
-### P2
-- Merchant Onboarding Wizard (Apply → Business → Store → Category → Delivery → Address → Documents → Approval).
-- Courier Onboarding Wizard (Apply → ID upload → Vehicle type → Phone verification → Approval).
-- Push notification simulation UI (courier assignment, merchant new order).
-- Real-time ETA calculation simulation for customers.
-- Disputes & resolutions module in Admin panel.
-- Image upload for catalog products (currently SVG gradient tiles).
-- Geofenced merchant filter / nearest-first sorting.
+Language:
 
-## Refactoring TODO
-- `/app/frontend/src/store/GapGelContext.jsx` is ~1140 lines — split into multiple hooks/reducers (orders, merchants, couriers, cart) when next major feature lands.
+* Turkish-first UI
+* TRY currency
+* KKTC market localization
 
-## Testing status
-- Iter 4 testing agent run: 13/13 PASS, 0 blockers, only cosmetic Recharts warning (now fixed).
-- No backend, no API tests — frontend Playwright + code review only.
+---
 
-## Credentials
-- N/A. Role switcher (top-right combobox) is the entry point. No login.
+# Current Project State
+
+## Reality Check
+
+The current project originated as:
+
+* HADE / GapGel frontend simulation MVP
+* Pure frontend architecture
+* In-memory + localStorage state
+* No real backend initially
+
+Over time the project evolved toward:
+
+* Production-oriented SestaKıbrıs marketplace
+* Real backend architecture planning
+* Supabase + Vercel infrastructure
+* Multi-tenant operational marketplace
+
+The current codebase may contain:
+
+* AI-generated architectural inconsistencies
+* Duplicate logic
+* Large context/reducer files
+* Mixed prototype + production patterns
+* Deployment instability
+* Middleware/routing inconsistencies
+* Unused dependencies or experimental code
+
+This is expected during rapid AI-assisted MVP development.
+
+Current priority is:
+SYSTEM STABILIZATION — not feature expansion.
+
+---
+
+# Existing Frontend Capabilities
+
+The frontend MVP already includes:
+
+## Customer Features
+
+* Market listing
+* Product browsing
+* Cart system
+* Promo codes
+* Reorder CTA
+* Order tracking
+* Turkish localization
+* Ratings/reviews
+* Multi-role mobile shell
+
+## Merchant Features
+
+* Product CRUD
+* Order management
+* Confirmation workflow
+* Delivery mode configuration
+* Merchant analytics
+* Merchant ratings
+* CSV bulk catalog import
+
+## Courier Features
+
+* Online/offline toggle
+* Courier assignment
+* Earnings widget
+* OTP delivery verification
+* Reassignment timers
+
+## Admin Features
+
+* Merchant approval/suspension
+* Delivery mode management
+* Platform analytics
+* Refund handling
+* CSV export
+* Order overrides
+
+---
+
+# Current Technical Direction
+
+The project is transitioning from:
+Prototype simulation architecture
+→
+Production-ready marketplace architecture.
+
+Old Prototype Stack:
+
+* React
+* Context + useReducer
+* localStorage
+* simulated payments/auth
+
+Target Production Stack:
+
+* Next.js 14 App Router
+* TypeScript
+* Supabase
+* Tailwind
+* TanStack Query
+* Zustand (cart only)
+* iyzico
+* Netgsm
+* Vercel
+
+---
+
+# Critical Engineering Principles
+
+## DO NOT
+
+* Rewrite the entire project
+* Randomly refactor architecture
+* Add unnecessary complexity
+* Expand MVP scope
+* Install random dependencies
+* Break working UI
+
+## DO
+
+* Stabilize existing system
+* Recover architecture progressively
+* Preserve good frontend assets
+* Fix blockers first
+* Prioritize deployment stability
+* Keep minimal operational architecture
+
+---
+
+# MVP Goal (Frozen)
+
+The MVP is considered successful when:
+
+1. Customer can browse markets/products
+2. Customer can place an order
+3. Merchant receives and manages order
+4. Courier can deliver order
+5. Admin can monitor operations
+6. System works in production deployment
+7. One real KKTC market can operate through it
+
+NOT required yet:
+
+* AI recommendations
+* Native apps
+* Multi-city support
+* Advanced analytics
+* Loyalty systems
+* Enterprise scalability
+
+---
+
+# Current Recovery Priorities
+
+Priority Order:
+
+1. Project forensic audit
+2. Deployment stabilization
+3. Environment variable cleanup
+4. Middleware/routing fixes
+5. Remove dead/duplicate code
+6. State management cleanup
+7. Backend integration stabilization
+8. Operational MVP testing
+
+---
+
+# Known Technical Risks
+
+* Large monolithic context files
+* Mixed prototype + production logic
+* Potential dependency chaos
+* Middleware/auth instability
+* Deployment failures
+* Possible TypeScript inconsistencies
+* localStorage legacy patterns from prototype phase
+
+---
+
+# AI CTO Instructions
+
+You are NOT a generic code assistant.
+
+You are acting as:
+
+* senior software architect
+* recovery engineer
+* production stabilization engineer
+* technical CTO partner
+
+Always:
+
+1. Analyze before coding
+2. Explain root cause first
+3. Use minimal safe fixes
+4. Preserve architecture consistency
+5. Avoid unnecessary rewrites
+6. Protect operational MVP flow
+7. Optimize for deployment stability
+
+The mission is:
+Transform the existing MVP into a stable operational marketplace platform for Northern Cyprus.

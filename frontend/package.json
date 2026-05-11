@@ -35,7 +35,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "cra-template": "1.2.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
@@ -75,8 +74,8 @@
     ]
   },
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@eslint/js": "9.23.0",
+    "eslint-config-next": "^15.1.0",
     "autoprefixer": "^10.4.20",
     "eslint": "9.23.0",
     "eslint-plugin-import": "2.31.0",

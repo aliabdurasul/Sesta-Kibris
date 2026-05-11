@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import CourierProfile from "@/pages/courier/Profile";
+import CourierProfile from "@/views/courier/Profile";
 
 export default function Page() {
   return <CourierProfile />;
