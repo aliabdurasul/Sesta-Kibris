@@ -1,10 +1,6 @@
 {
   "compilerOptions": {
-<<<<<<< HEAD
-    "target": "es2020",
-=======
     "target": "es2017",
->>>>>>> fix/system-recovery-cleanup
     "lib": [
       "dom",
       "dom.iterable",
@@ -33,18 +29,6 @@
       {
         "name": "next"
       }
-<<<<<<< HEAD
-    ]
-  },
-  "include": [
-    "src",
-    "next-env.d.ts",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    ".next/types/validator.ts"
-=======
     ],
     "isolatedModules": true,
     "strictNullChecks": true
@@ -55,6 +39,5 @@
   ],
   "exclude": [
     "node_modules"
->>>>>>> fix/system-recovery-cleanup
   ]
 }
