@@ -6,11 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Store, Bike, ShieldCheck, User } from 'lucide-react';
+
+const ROLE_ROUTES = { admin: '/admin', merchant: '/merchant', courier: '/courier', customer: '/' };
+
+const DEMO_BUTTONS = [
+  { role: 'customer', label: 'Müşteri', icon: User, color: 'bg-purple-50 text-[#6C3BFF]' },
+  { role: 'merchant', label: 'Merchant', icon: Store, color: 'bg-blue-50 text-blue-600' },
+  { role: 'courier', label: 'Kurye', icon: Bike, color: 'bg-cyan-50 text-[#00C2A8]' },
+  { role: 'admin', label: 'Admin', icon: ShieldCheck, color: 'bg-orange-50 text-orange-500' },
+];
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn, primaryRole } = useAuth();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,10 +30,19 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await signIn(email, password);
-      // Redirect based on role
-      const routes = { admin: '/admin', merchant: '/merchant', courier: '/courier', customer: '/customer' };
-      navigate(routes[primaryRole] || '/customer', { replace: true });
+      const user = await signIn(email, password);
+      // Fetch fresh roles after sign-in to avoid stale-closure redirect
+      const { getUserRoles } = await import('@/services/auth.service');
+      let primaryRole = 'customer';
+      try {
+        const rolesData = await getUserRoles(user.id);
+        if (rolesData.includes('admin')) primaryRole = 'admin';
+        else if (rolesData.includes('merchant_owner') || rolesData.includes('merchant_staff')) primaryRole = 'merchant';
+        else if (rolesData.includes('courier')) primaryRole = 'courier';
+      } catch {
+        // fallback to customer if roles fetch fails
+      }
+      navigate(ROLE_ROUTES[primaryRole] || '/', { replace: true });
     } catch (err) {
       setError(err.message || 'Giriş başarısız. Lütfen tekrar deneyin.');
     } finally {
@@ -43,6 +61,29 @@ export default function Login() {
           <CardDescription className="text-gray-500">SestaKibris hesabınıza giriş yapın</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Quick demo access */}
+          <div className="mb-5">
+            <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-400">Hızlı Demo Erişimi</p>
+            <div className="grid grid-cols-4 gap-2">
+              {DEMO_BUTTONS.map(({ role, label, icon: Icon, color }) => (
+                <button
+                  key={role}
+                  onClick={() => navigate(ROLE_ROUTES[role])}
+                  className={`tap flex flex-col items-center gap-1 rounded-xl border border-[#E5E7EB] p-3 text-xs font-bold ${color}`}
+                  data-testid={`demo-${role}`}
+                >
+                  <Icon className="h-5 w-5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative mb-4">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+            <div className="relative flex justify-center"><span className="bg-white px-3 text-xs text-gray-400">veya e-posta ile giriş yap</span></div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-600 text-sm">

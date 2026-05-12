@@ -10,6 +10,10 @@ import { useAuth } from '../contexts/AuthContext';
 export default function AuthGuard({ children }) {
   const { isAuthenticated, loading } = useAuth();
 
+  if (process.env.NEXT_PUBLIC_MVP_MODE === "true") {
+    return children;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F7F7FB]">

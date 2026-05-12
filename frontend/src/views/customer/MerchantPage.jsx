@@ -6,16 +6,52 @@ import { Button } from "@/components/ui/button";
 import { useMerchant, useMerchantProducts } from "@/hooks/useMerchants";
 import { useCart } from "@/hooks/useCart";
 import { MERCHANT_TYPE_LABELS, formatPrice } from "@/lib/constants";
+import { seedMerchants } from "@/data/seed";
+
+function seedMerchantToUI(s) {
+  const prepMin = parseInt((s.delivery || "15").split(/[–-]/)[0], 10) || 15;
+  return {
+    id: s.id,
+    name: s.name,
+    type: s.type,
+    description: s.tagline || "",
+    address: s.address || "",
+    avg_prep_minutes: prepMin,
+    is_accepting_orders: true,
+    logo_url: s.image || null,
+    cover_image_url: s.image || null,
+  };
+}
+
+function seedProductToUI(p) {
+  return {
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    image_url: p.image || null,
+    stock_status: "in_stock",
+  };
+}
 
 export default function CustomerMerchant() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addItem, decrementItem, cart, itemCount } = useCart();
 
-  const { data: merchant, isLoading: merchantLoading } = useMerchant(id);
-  const { data: products = [], isLoading: productsLoading } = useMerchantProducts(id);
+  const { data: dbMerchant, isLoading: merchantLoading } = useMerchant(id);
+  const { data: dbProducts = [], isLoading: productsLoading } = useMerchantProducts(id);
 
   const isLoading = merchantLoading || productsLoading;
+
+  // Seed fallback when Supabase returns nothing for this ID
+  const seedMatch = !dbMerchant ? seedMerchants.find((s) => s.id === id) : null;
+  const merchant = dbMerchant || (seedMatch ? seedMerchantToUI(seedMatch) : null);
+  const products =
+    dbProducts.length > 0
+      ? dbProducts
+      : seedMatch
+      ? (seedMatch.products || []).map(seedProductToUI)
+      : [];
 
   if (isLoading) {
     return (
