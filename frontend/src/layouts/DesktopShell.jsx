@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import { Outlet } from "@/lib/router-bridge";
 import RoleSwitcher from "@/components/RoleSwitcher";
 
 export default function DesktopShell({ children }) {

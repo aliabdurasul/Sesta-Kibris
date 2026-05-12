@@ -1,12 +1,13 @@
 "use client";
 import React from "react";
-import { NavLink, useLocation } from "@/lib/router-bridge";
+import { usePathname } from "next/navigation";
+import { NavLink } from "@/lib/router-bridge";
 import { Home, ClipboardList, User, Bike } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 
 export default function BottomNav({ variant }) {
   const { itemCount: cartCount } = useCart();
-  const location = useLocation();
+  const pathname = usePathname() || "/";
 
   const items =
     variant === "courier"
@@ -39,9 +40,7 @@ export default function BottomNav({ variant }) {
     >
       <div className="pointer-events-auto grid grid-cols-3 gap-1 rounded-2xl border border-[#E5E7EB] bg-white/95 px-2 py-2 shadow-xl backdrop-blur">
         {items.map(({ to, label, icon: Icon, end }) => {
-          const active = end
-            ? location.pathname === to
-            : location.pathname.startsWith(to);
+          const active = end ? pathname === to : pathname.startsWith(to);
           return (
             <NavLink
               key={to}
