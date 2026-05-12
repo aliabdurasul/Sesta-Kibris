@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { useNavigate, useLocation } from "@/lib/router-bridge";
+import { useNavigate } from "@/lib/router-bridge";
 import {
   Select,
   SelectContent,
@@ -26,7 +26,6 @@ export default function RoleSwitcher() {
     setCurrentCourier,
   } = useMarketplace();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleRoleChange = (role) => {
     setRole(role);

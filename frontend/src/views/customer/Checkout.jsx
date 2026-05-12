@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useNavigate } from "@/lib/router-bridge";
 import { ArrowLeft, MapPin, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,14 +12,17 @@ import { usePlaceOrder } from "@/hooks/useOrders";
 import { formatPrice } from "@/lib/constants";
 import { toast } from "sonner";
 
-export default function CustomerCheckout() {
+function CheckoutInner() {
   const navigate = useNavigate();
+  const searchParams = useSearchParams();
   const { cart, clearCart, subtotal } = useCart();
   const { user } = useAuth();
   const placeOrderMutation = usePlaceOrder();
 
-  const routerState = typeof window !== "undefined" ? window.history?.state?.usr : undefined;
-  const { discount = 0, deliveryFee = 0, total = 0, promoCode = null } = routerState || {};
+  const discount = parseFloat(searchParams.get("discount") ?? "0");
+  const deliveryFee = parseFloat(searchParams.get("deliveryFee") ?? "0");
+  const total = parseFloat(searchParams.get("total") ?? String(subtotal));
+  const promoCode = searchParams.get("promoCode") ?? null;
 
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
@@ -132,5 +136,13 @@ export default function CustomerCheckout() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function CustomerCheckout() {
+  return (
+    <Suspense>
+      <CheckoutInner />
+    </Suspense>
   );
 }

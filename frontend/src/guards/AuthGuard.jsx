@@ -4,12 +4,11 @@
 
 "use client";
 import React from 'react';
-import { Navigate, Outlet, useLocation } from '@/lib/router-bridge';
+import { Navigate, Outlet } from '@/lib/router-bridge';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AuthGuard({ children }) {
   const { isAuthenticated, loading } = useAuth();
-  const location = useLocation();
 
   if (loading) {
     return (
@@ -20,7 +19,7 @@ export default function AuthGuard({ children }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
