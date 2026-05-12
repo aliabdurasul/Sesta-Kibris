@@ -5,6 +5,23 @@ import { Input } from "@/components/ui/input";
 import { Search, Clock, Loader2 } from "lucide-react";
 import { useActiveMerchants } from "@/hooks/useMerchants";
 import { MERCHANT_TYPE_LABELS } from "@/lib/constants";
+import { seedMerchants } from "@/data/seed";
+
+// Map seed merchant shape → Supabase UI shape for the fallback
+function toUIShape(s) {
+  const prepMin = parseInt((s.delivery || "15").split(/[–-]/)[0], 10) || 15;
+  return {
+    id: s.id,
+    name: s.name,
+    type: s.type,
+    description: s.tagline || "",
+    address: s.address || "",
+    avg_prep_minutes: prepMin,
+    is_accepting_orders: true,
+    logo_url: s.image || null,
+  };
+}
+const SEED_FALLBACK = seedMerchants.map(toUIShape);
 
 const CHIPS = [
   { key: "all", label: "Hepsi" },
@@ -18,8 +35,9 @@ export default function CustomerMarkets() {
   const [chip, setChip] = useState("all");
   const [query, setQuery] = useState("");
 
-  // ── Real data from Supabase ──────────────────────────────
-  const { data: merchants = [], isLoading, isError } = useActiveMerchants();
+  // ── Real data from Supabase, seed fallback when empty ───
+  const { data: rawMerchants = [], isLoading, isError } = useActiveMerchants();
+  const merchants = !isLoading && rawMerchants.length === 0 ? SEED_FALLBACK : rawMerchants;
 
   const filtered = useMemo(() => {
     return merchants.filter((m) => {
@@ -100,7 +118,7 @@ export default function CustomerMarkets() {
       {/* Merchants list */}
       <section>
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-600">
-          {merchants.length} Mağaza
+          {filtered.length} Mağaza
         </h2>
         <div className="space-y-3">
           {filtered.map((m) => (

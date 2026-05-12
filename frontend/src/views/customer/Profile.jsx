@@ -1,4 +1,6 @@
+"use client";
 import React, { useState } from "react";
+import { useNavigate } from "@/lib/router-bridge";
 import { useMarketplace } from "@/store/GapGelContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +23,7 @@ import {
 } from "lucide-react";
 
 export default function CustomerProfile() {
+  const navigate = useNavigate();
   const {
     state,
     findCustomer,
@@ -193,7 +196,7 @@ export default function CustomerProfile() {
       {/* Onboarding CTAs */}
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Button
-          onClick={() => (window.location.href = "/merchant/onboarding")}
+          onClick={() => navigate("/merchant/onboarding")}
           variant="outline"
           className="tap h-12 rounded-2xl border-[#6C3BFF]/30 font-bold text-[#6C3BFF] hover:bg-[#6C3BFF]/5"
           data-testid="apply-merchant-button"
@@ -201,7 +204,7 @@ export default function CustomerProfile() {
           Mağaza ol
         </Button>
         <Button
-          onClick={() => (window.location.href = "/courier/onboarding")}
+          onClick={() => navigate("/courier/onboarding")}
           variant="outline"
           className="tap h-12 rounded-2xl border-[#00C2A8]/30 font-bold text-[#00A38D] hover:bg-[#00C2A8]/5"
           data-testid="apply-courier-button"

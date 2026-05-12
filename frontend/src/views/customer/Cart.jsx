@@ -31,8 +31,13 @@ export default function CustomerCart() {
   };
 
   const proceedToCheckout = () => {
-    // Navigate to checkout and pass the calculated totals and promo
-    navigate("/checkout", { state: { discount, deliveryFee, total, promoCode: promo?.code } });
+    const params = new URLSearchParams({
+      discount: String(discount),
+      deliveryFee: String(deliveryFee),
+      total: String(total),
+      ...(promo?.code ? { promoCode: promo.code } : {}),
+    });
+    navigate(`/checkout?${params.toString()}`);
   };
 
   if (cart.items.length === 0) {

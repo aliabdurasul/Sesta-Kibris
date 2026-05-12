@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useNavigate } from "@/lib/router-bridge";
-import { Search, MapPin, Store, Droplet, Flame, ArrowRight } from "lucide-react";
+import { Search, MapPin, Store, Droplet, Flame, ArrowRight, ShieldCheck, Bike, LayoutDashboard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 const CATEGORIES = [
@@ -85,6 +85,45 @@ export default function CustomerHome() {
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
             <ArrowRight className="h-5 w-5" />
+          </div>
+        </div>
+
+        {/* For Businesses */}
+        <div className="mt-8 mb-4">
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-600">
+            İş Ortakları
+          </h3>
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              onClick={() => navigate("/merchant")}
+              className="tap flex flex-col items-center justify-center gap-2 rounded-2xl border border-[#E5E7EB] bg-white py-4 shadow-sm"
+              data-testid="enter-merchant"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-50">
+                <Store className="h-6 w-6 text-[#6C3BFF]" />
+              </div>
+              <span className="text-xs font-bold text-gray-800">Merchant</span>
+            </button>
+            <button
+              onClick={() => navigate("/courier")}
+              className="tap flex flex-col items-center justify-center gap-2 rounded-2xl border border-[#E5E7EB] bg-white py-4 shadow-sm"
+              data-testid="enter-courier"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-50">
+                <Bike className="h-6 w-6 text-[#00C2A8]" />
+              </div>
+              <span className="text-xs font-bold text-gray-800">Kurye</span>
+            </button>
+            <button
+              onClick={() => navigate("/admin")}
+              className="tap flex flex-col items-center justify-center gap-2 rounded-2xl border border-[#E5E7EB] bg-white py-4 shadow-sm"
+              data-testid="enter-admin"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-50">
+                <ShieldCheck className="h-6 w-6 text-orange-500" />
+              </div>
+              <span className="text-xs font-bold text-gray-800">Admin</span>
+            </button>
           </div>
         </div>
 

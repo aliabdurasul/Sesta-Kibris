@@ -1,6 +1,7 @@
 "use client";
-import React, { useState } from "react";
-import { useNavigate, useLocation } from "@/lib/router-bridge";
+import React, { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { useNavigate } from "@/lib/router-bridge";
 import { ArrowLeft, MapPin, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,23 +12,24 @@ import { usePlaceOrder } from "@/hooks/useOrders";
 import { formatPrice } from "@/lib/constants";
 import { toast } from "sonner";
 
-export default function CustomerCheckout() {
+function CheckoutInner() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const searchParams = useSearchParams();
   const { cart, clearCart, subtotal } = useCart();
   const { user } = useAuth();
   const placeOrderMutation = usePlaceOrder();
 
-  // Retrieve calculated totals from Cart
-  const { discount = 0, deliveryFee = 0, total = 0, promoCode = null } = location.state || {};
+  const discount = parseFloat(searchParams.get("discount") ?? "0");
+  const deliveryFee = parseFloat(searchParams.get("deliveryFee") ?? "0");
+  const total = parseFloat(searchParams.get("total") ?? String(subtotal));
+  const promoCode = searchParams.get("promoCode") ?? null;
 
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestAddress, setGuestAddress] = useState("");
   const [addressNotes, setAddressNotes] = useState("");
 
-  // If page is refreshed and state is lost or cart is empty
-  if (cart.items.length === 0 || !location.state) {
+  if (cart.items.length === 0) {
     navigate("/cart", { replace: true });
     return null;
   }
@@ -134,5 +136,13 @@ export default function CustomerCheckout() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function CustomerCheckout() {
+  return (
+    <Suspense>
+      <CheckoutInner />
+    </Suspense>
   );
 }

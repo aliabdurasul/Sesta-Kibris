@@ -1,3 +1,4 @@
+"use client";
 import React, { useMemo, useState } from "react";
 import { useMarketplace } from "@/store/GapGelContext";
 import StatusBadge from "@/components/StatusBadge";
@@ -37,6 +38,7 @@ function downloadCsv(rows, filename) {
     headers.join(","),
     ...rows.map((r) => headers.map((h) => escape(r[h])).join(",")),
   ].join("\n");
+  if (typeof window === "undefined") return;
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

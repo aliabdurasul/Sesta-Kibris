@@ -1,20 +1,32 @@
 "use client";
 import React from "react";
-import { Outlet } from "@/lib/router-bridge";
-import RoleSwitcher from "@/components/RoleSwitcher";
+import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 
 export default function MobileShell({ variant = "customer", children }) {
+  const router = useRouter();
   return (
     <div className="min-h-screen bg-[#F7F7FB]">
-      {/* [FUTURE AUTH]: <RoleSwitcher /> is hidden for the public MVP to provide a clean customer experience */}
-      {/* <RoleSwitcher /> */}
       <div className="sticky top-0 z-40 w-full border-b border-[#E5E7EB] bg-white/85 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-md items-center gap-3 px-4">
-          <div className="flex items-center gap-2 font-extrabold tracking-tight">
+        <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4">
+          <button
+            onClick={() => router.push("/")}
+            className="flex items-center gap-2 font-extrabold tracking-tight"
+          >
             <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#6C3BFF] text-white shadow-sm">S</span>
             <span className="text-lg">SestaKibris</span>
-          </div>
+          </button>
+          <button
+            onClick={() => router.push("/login")}
+            className="tap grid h-9 w-9 place-items-center rounded-full border border-[#E5E7EB] bg-white shadow-sm text-gray-600"
+            aria-label="Giriş Yap"
+            data-testid="header-login-btn"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </button>
         </div>
       </div>
       <main

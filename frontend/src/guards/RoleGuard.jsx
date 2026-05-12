@@ -4,7 +4,7 @@
 
 "use client";
 import React from 'react';
-import { Navigate, Outlet } from '@/lib/router-bridge';
+import { Navigate } from '@/lib/router-bridge';
 import { useAuth } from '../contexts/AuthContext';
 
 /**
@@ -14,6 +14,10 @@ import { useAuth } from '../contexts/AuthContext';
  */
 export default function RoleGuard({ allowed = [], children }) {
   const { roles, primaryRole, loading } = useAuth();
+
+  if (process.env.NEXT_PUBLIC_MVP_MODE === "true") {
+    return children;
+  }
 
   if (loading) {
     return (
