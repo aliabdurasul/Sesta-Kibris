@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
-import { MarketplaceProvider } from "@/store/GapGelContext";
 import { Toaster } from "@/components/ui/sonner";
 import { logPublicEnvDiagnostics, publicEnvState } from "@/lib/env";
 
@@ -70,7 +69,6 @@ export default function Providers({ children }) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <MarketplaceProvider>
             {children}
             <Toaster
               position="top-center"
@@ -84,7 +82,6 @@ export default function Providers({ children }) {
                 },
               }}
             />
-          </MarketplaceProvider>
         </CartProvider>
       </AuthProvider>
     </QueryClientProvider>

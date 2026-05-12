@@ -43,7 +43,7 @@ export default function CustomerOrderDetail() {
     <div className="gg-rise px-4 pb-24 pt-4" data-testid="customer-order-detail">
       <div className="mb-4 flex items-center gap-2">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/customer/orders")}
           className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm"
           data-testid="back-button"
         >

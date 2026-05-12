@@ -1,8 +1,10 @@
 "use client";
 import React, { useMemo, useState } from "react";
-import { useMarketplace } from "@/store/GapGelContext";
-import StatusBadge from "@/components/StatusBadge";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import StatusBadge from "@/components/StatusBadge";
 import {
   Select,
   SelectContent,
@@ -10,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import {
   Shield,
   Users,
@@ -18,15 +19,22 @@ import {
   Bike,
   Activity,
   Search,
-  AlertTriangle,
   Download,
-  RotateCcw,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
-import { ORDER_STATES, STATE_LABELS } from "@/lib/orderMachine";
-import { DELIVERY_MODE_LABELS, APPROVAL_LABELS } from "@/data/seed";
-import RevenueChart from "@/components/RevenueChart";
-import RefundDialog from "@/components/RefundDialog";
+import * as adminService from "@/services/admin.service";
+import { formatPrice } from "@/lib/constants";
 
+// ── Admin query keys ──────────────────────────────────────────
+const adminKeys = {
+  orders: ["admin", "orders"],
+  merchants: ["admin", "merchants"],
+};
+
+// ── CSV helper ───────────────────────────────────────────────
 function downloadCsv(rows, filename) {
   if (!rows.length) return;
   const headers = Object.keys(rows[0]);
@@ -47,91 +55,139 @@ function downloadCsv(rows, filename) {
   a.style.display = "none";
   document.body.appendChild(a);
   a.click();
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 0);
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
 }
 
-export default function AdminDashboard() {
-  const {
-    state,
-    findMerchant,
-    findCourier,
-    findCustomer,
-    adminForceStatus,
-    adminForceAssign,
-    adminApplyRefund,
-    merchantConfirmationRate,
-    merchantHealthScore,
-    setMerchantApproval,
-    setMerchantDeliveryMode,
-    setCourierApproval,
-    resolveDispute,
-    platformAnalytics,
-    recentEvents,
-  } = useMarketplace();
+// ── Sub-components ────────────────────────────────────────────
+function MetricCard({ label, value, accent = "#6C3BFF", warn = false }) {
+  return (
+    <div
+      className={`rounded-2xl border bg-white p-4 shadow-sm ${warn ? "border-red-300 bg-red-50" : "border-[#E5E7EB]"}`}
+      style={{ borderLeftColor: accent, borderLeftWidth: 4 }}
+    >
+      <div className="text-2xl font-extrabold" style={{ color: accent }}>
+        {value}
+      </div>
+      <div className="mt-0.5 text-xs font-semibold text-gray-500">{label}</div>
+    </div>
+  );
+}
 
+function SideItem({ icon: Icon, label, active = false, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors ${
+        active
+          ? "bg-[#6C3BFF]/10 font-bold text-[#6C3BFF]"
+          : "text-gray-600 hover:bg-gray-100"
+      }`}
+    >
+      {Icon && <Icon className="h-4 w-4 shrink-0" />}
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────
+export default function AdminDashboard() {
+  const qc = useQueryClient();
+  const [tab, setTab] = useState("orders");
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [refundOrderId, setRefundOrderId] = useState(null);
-  const refundOrder = state.orders.find((o) => o.id === refundOrderId);
-  const [resolveDialog, setResolveDialog] = useState(null); // {orderId}
-  const [resolveForm, setResolveForm] = useState({ resolution: "refund_full", refundAmount: 0, note: "" });
 
-  const filtered = useMemo(() => {
-    return state.orders.filter((o) => {
+  // ── Data queries ────────────────────────────────────────────
+  const {
+    data: orders = [],
+    isLoading: ordersLoading,
+    refetch: refetchOrders,
+  } = useQuery({
+    queryKey: adminKeys.orders,
+    queryFn: adminService.getAllOrders,
+    staleTime: 30 * 1000,
+  });
+
+  const {
+    data: merchants = [],
+    isLoading: merchantsLoading,
+    refetch: refetchMerchants,
+  } = useQuery({
+    queryKey: adminKeys.merchants,
+    queryFn: adminService.getAllMerchants,
+    staleTime: 60 * 1000,
+  });
+
+  // ── Mutations ───────────────────────────────────────────────
+  const approveMutation = useMutation({
+    mutationFn: adminService.approveMerchant,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.merchants });
+      toast.success("Mağaza onaylandı");
+    },
+    onError: (e) => toast.error(`Hata: ${e.message}`),
+  });
+
+  const suspendMutation = useMutation({
+    mutationFn: adminService.suspendMerchant,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.merchants });
+      toast.success("Mağaza askıya alındı");
+    },
+    onError: (e) => toast.error(`Hata: ${e.message}`),
+  });
+
+  const overrideMutation = useMutation({
+    mutationFn: ({ orderId, status }) =>
+      adminService.adminOverrideStatus(orderId, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.orders });
+      toast.success("Sipariş durumu güncellendi");
+    },
+    onError: (e) => toast.error(`Hata: ${e.message}`),
+  });
+
+  // ── Derived state ───────────────────────────────────────────
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
       const matchesStatus =
         statusFilter === "all" ? true : o.status === statusFilter;
       const q = search.trim().toLowerCase();
       const matchesSearch =
         !q ||
         o.id.toLowerCase().includes(q) ||
-        findMerchant(o.merchantId)?.name.toLowerCase().includes(q) ||
-        (o.courierId && findCourier(o.courierId)?.name.toLowerCase().includes(q));
+        (o.guest_name || "").toLowerCase().includes(q);
       return matchesStatus && matchesSearch;
     });
-  }, [state.orders, statusFilter, search, findMerchant, findCourier]);
-
-  const handleExport = () => {
-    const rows = state.orders.map((o) => ({
-      order_id: o.id,
-      status: o.status,
-      customer: findCustomer(o.customerId)?.name || "",
-      merchant: findMerchant(o.merchantId)?.name || "",
-      merchant_type: findMerchant(o.merchantId)?.type || "",
-      courier: o.courierId ? findCourier(o.courierId)?.name : "",
-      self_delivery: o.selfDelivery ? "yes" : "no",
-      items: o.items.length,
-      subtotal: o.subtotal,
-      delivery_fee: o.deliveryFee,
-      refund: o.refund?.amount || 0,
-      net_total: +(o.total - (o.refund?.amount || 0)).toFixed(2),
-      total: o.total,
-      created_at: o.createdAt,
-      delivered_at: o.deliveredAt || "",
-      cancel_reason: o.cancelReason || "",
-    }));
-    downloadCsv(
-      rows,
-      `gapgel-orders-${new Date().toISOString().slice(0, 10)}.csv`,
-    );
-  };
+  }, [orders, statusFilter, search]);
 
   const metrics = useMemo(() => {
-    const active = state.orders.filter((o) => o.status !== "delivered").length;
-    const idleCouriers = state.couriers.filter((c) => c.status === "idle")
-      .length;
-    const unassigned = state.orders.filter(
-      (o) => !o.courierId && !o.selfDelivery && o.status === "ready",
+    const active = orders.filter(
+      (o) => !["COMPLETED", "CANCELLED"].includes(o.status),
     ).length;
-    return {
-      total: state.orders.length,
-      active,
-      idleCouriers,
-      unassigned,
-    };
-  }, [state.orders, state.couriers]);
+    const totalRevenue = orders
+      .filter((o) => o.status === "COMPLETED")
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+    const pendingMerchants = merchants.filter((m) => !m.is_active).length;
+    return { total: orders.length, active, totalRevenue, pendingMerchants };
+  }, [orders, merchants]);
+
+  const handleExport = () => {
+    const rows = orders.map((o) => ({
+      order_id: o.id,
+      status: o.status,
+      guest_name: o.guest_name || "",
+      guest_phone: o.guest_phone || "",
+      merchant_id: o.merchant_id || "",
+      total: o.total || 0,
+      created_at: o.created_at,
+    }));
+    downloadCsv(rows, `sestakibris-orders-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const ORDER_STATUSES = [
+    "CREATED", "PAID", "ACCEPTED", "PREPARING", "READY",
+    "ASSIGNED", "OUT_FOR_DELIVERY", "COMPLETED", "CANCELLED",
+  ];
 
   return (
     <div className="grid min-h-[calc(100vh-56px)] gap-6 md:grid-cols-[220px_1fr]">
@@ -147,760 +203,263 @@ export default function AdminDashboard() {
           Kontrol Kulesi
         </div>
         <nav className="space-y-1 text-sm">
-          <SideItem active icon={Activity} label="Siparişler" />
-          <SideItem icon={Store} label={`Mağazalar (${state.merchants.length})`} />
-          <SideItem icon={Bike} label={`Kuryeler (${state.couriers.length})`} />
-          <SideItem icon={Users} label={`Müşteriler (${state.customers.length})`} />
+          <SideItem
+            active={tab === "orders"}
+            icon={Activity}
+            label={`Siparişler (${orders.length})`}
+            onClick={() => setTab("orders")}
+          />
+          <SideItem
+            active={tab === "merchants"}
+            icon={Store}
+            label={`Mağazalar (${merchants.length})`}
+            onClick={() => setTab("merchants")}
+          />
+          <SideItem
+            active={tab === "couriers"}
+            icon={Bike}
+            label="Kuryeler"
+            onClick={() => setTab("couriers")}
+          />
+          <SideItem
+            active={tab === "customers"}
+            icon={Users}
+            label="Müşteriler"
+            onClick={() => setTab("customers")}
+          />
         </nav>
         <div className="mt-6 rounded-xl border border-dashed border-[#6C3BFF]/30 p-3 text-xs text-gray-500">
           Yönetici tüm sipariş durumlarını manuel olarak değiştirebilir ve
-          kuryeleri zorla atayabilir.
+          mağazaları onaylayabilir.
         </div>
       </aside>
 
       {/* Main */}
-      <section className="gg-rise" data-testid="admin-dashboard">
-        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <section className="space-y-4 pb-8" data-testid="admin-dashboard">
+        {/* Header */}
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold text-[#6C3BFF]">
               <Shield className="h-4 w-4" /> Yönetici
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
-              Canlı sipariş konsolu
+              Canlı Kontrol Paneli
             </h1>
             <p className="text-sm text-gray-500">
-              Hiperlokal ağdaki tüm siparişleri tek ekrandan yönetin.
+              SestaKibris marketplace yönetim merkezi
             </p>
           </div>
-          <Button
-            onClick={handleExport}
-            className="tap h-11 rounded-full bg-[#1A1A1A] px-5 font-bold text-white hover:bg-black"
-            data-testid="admin-export-csv"
-          >
-            <Download className="mr-2 h-4 w-4" /> CSV dışa aktar
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { refetchOrders(); refetchMerchants(); }}
+              className="tap h-10 rounded-full px-4 font-bold"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" /> Yenile
+            </Button>
+            {tab === "orders" && (
+              <Button
+                onClick={handleExport}
+                className="tap h-10 rounded-full bg-[#1A1A1A] px-5 font-bold text-white hover:bg-black"
+                data-testid="admin-export-csv"
+              >
+                <Download className="mr-2 h-4 w-4" /> CSV
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Metrics */}
-        <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <MetricCard label="Toplam sipariş" value={metrics.total} accent="#6C3BFF" />
-          <MetricCard label="Aktif" value={metrics.active} accent="#00C2A8" />
+          <MetricCard label="Aktif sipariş" value={metrics.active} accent="#00C2A8" />
           <MetricCard
-            label="Boştaki kurye"
-            value={`${metrics.idleCouriers}/${state.couriers.length}`}
+            label="Toplam ciro (₺)"
+            value={formatPrice(metrics.totalRevenue)}
             accent="#1A1A1A"
           />
           <MetricCard
-            label="Atanmamış hazır"
-            value={metrics.unassigned}
+            label="Onay bekleyen"
+            value={metrics.pendingMerchants}
             accent="#FF3B30"
-            warn={metrics.unassigned > 0}
+            warn={metrics.pendingMerchants > 0}
           />
         </div>
 
-        {/* SestaKibris platform analytics */}
-        <div
-          className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4"
-          data-testid="platform-analytics"
-        >
-          <MetricCard
-            label="GMV (toplam ciro)"
-            value={`₺${platformAnalytics().gmv}`}
-            accent="#6C3BFF"
-          />
-          <MetricCard
-            label="Tekrarlayan müşteri"
-            value={platformAnalytics().repeatCustomers}
-            accent="#00C2A8"
-          />
-          <MetricCard
-            label="Kurye kullanım %"
-            value={`${platformAnalytics().utilization}%`}
-            accent="#1A1A1A"
-          />
-          <MetricCard
-            label="Toplam iade"
-            value={`₺${platformAnalytics().refunds}`}
-            accent="#FF3B30"
-          />
+        {/* Mobile tab buttons */}
+        <div className="flex gap-2 md:hidden">
+          {["orders", "merchants"].map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`rounded-full px-4 py-2 text-xs font-bold ${tab === t ? "bg-[#6C3BFF] text-white" : "border border-[#E5E7EB] bg-white text-gray-600"}`}
+            >
+              {t === "orders" ? "Siparişler" : "Mağazalar"}
+            </button>
+          ))}
         </div>
 
-        {/* Chart + merchant rates */}
-        <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <RevenueChart orders={state.orders} />
-          </div>
-          <div
-            className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm"
-            data-testid="merchant-confirmation-rates"
-          >
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#6C3BFF]">
-              Mağaza sağlık skoru
+        {/* ── ORDERS TAB ─────────────────────────────────────── */}
+        {tab === "orders" && (
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-[#E5E7EB] p-4 md:flex-row md:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  className="pl-9"
+                  placeholder="Sipariş ara (ID, müşteri adı)..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Tüm durumlar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm durumlar</SelectItem>
+                  {ORDER_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-3">
-              {state.merchants.map((m) => {
-                const h = merchantHealthScore(m.id);
-                const r = merchantConfirmationRate(m.id);
-                const bad = h.score < 60;
-                return (
-                  <div key={m.id} data-testid={`mrate-${m.id}`}>
-                    <div className="flex items-baseline justify-between text-xs">
-                      <span className="font-semibold">{m.name}</span>
-                      <span
-                        className={`font-bold ${bad ? "text-red-600" : h.score >= 80 ? "text-[#00A38D]" : "text-[#1A1A1A]"}`}
-                        data-testid={`health-${m.id}`}
-                      >
-                        {h.score} / 100
-                      </span>
-                    </div>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
-                      <div
-                        className={`h-full ${bad ? "bg-red-400" : "bg-[#00C2A8]"}`}
-                        style={{ width: `${h.score}%` }}
-                      />
-                    </div>
-                    <div className="text-[10px] text-gray-500">
-                      Onay {r.rate == null ? "—" : `${r.rate}%`} · İptal{" "}
-                      {h.cancelRate == null
-                        ? "—"
-                        : `${Math.round(h.cancelRate * 100)}%`}{" "}
-                      · Puan{" "}
-                      {h.avgRating == null ? "—" : h.avgRating.toFixed(1)}
-                    </div>
-                    {h.flags.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {h.flags.map((f) => (
-                          <span
-                            key={f}
-                            className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700"
-                          >
-                            ⚠ {f}
-                          </span>
-                        ))}
+
+            {ordersLoading ? (
+              <div className="flex h-32 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-[#6C3BFF]" />
+              </div>
+            ) : filteredOrders.length === 0 ? (
+              <div className="p-8 text-center text-sm text-gray-500">
+                Sipariş bulunamadı.
+              </div>
+            ) : (
+              <div className="divide-y divide-[#E5E7EB]">
+                {filteredOrders.map((o) => (
+                  <div
+                    key={o.id}
+                    className="flex flex-col gap-2 p-4 md:flex-row md:items-center"
+                    data-testid={`admin-order-${o.id}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-gray-600">
+                          {o.order_number || o.id.slice(0, 8)}
+                        </span>
+                        <StatusBadge status={o.status} />
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Merchant management */}
-        <div
-          className="mb-4 overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm"
-          data-testid="admin-merchants-panel"
-        >
-          <div className="border-b border-[#E5E7EB] px-4 py-3 text-sm font-bold uppercase tracking-wide text-[#6C3BFF]">
-            Mağaza yönetimi
-          </div>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-[#F7F7FB] text-xs uppercase text-gray-500">
-              <tr>
-                <th className="px-4 py-3">Mağaza</th>
-                <th className="px-4 py-3">Tür</th>
-                <th className="px-4 py-3">Durum</th>
-                <th className="px-4 py-3">Teslimat modu</th>
-                <th className="px-4 py-3 text-right">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E5E7EB]">
-              {state.merchants.map((m) => (
-                <tr key={m.id} data-testid={`admin-merchant-row-${m.id}`}>
-                  <td className="px-4 py-3 font-semibold">{m.name}</td>
-                  <td className="px-4 py-3 text-xs uppercase text-gray-500">
-                    {m.type}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                        m.approvalStatus === "approved"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : m.approvalStatus === "suspended"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-amber-100 text-amber-700"
-                      }`}
-                      data-testid={`merchant-approval-${m.id}`}
-                    >
-                      {APPROVAL_LABELS[m.approvalStatus] || "—"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
+                      <div className="mt-0.5 text-xs text-gray-500">
+                        {o.guest_name || "—"} · {new Date(o.created_at).toLocaleString("tr-TR")} · {formatPrice(o.total || 0)}
+                      </div>
+                    </div>
                     <Select
-                      value={m.deliveryMode || "platform_only"}
-                      onValueChange={(v) => setMerchantDeliveryMode(m.id, v)}
+                      value={o.status}
+                      onValueChange={(newStatus) =>
+                        overrideMutation.mutate({ orderId: o.id, status: newStatus })
+                      }
                     >
-                      <SelectTrigger
-                        className="h-8 w-[160px] rounded-full border-[#E5E7EB] bg-white text-xs"
-                        data-testid={`merchant-mode-${m.id}`}
-                      >
+                      <SelectTrigger className="w-44 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(DELIVERY_MODE_LABELS).map(([k, v]) => (
-                          <SelectItem key={k} value={k}>
-                            {v}
-                          </SelectItem>
+                        {ORDER_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1.5">
-                      {m.approvalStatus !== "approved" && (
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── MERCHANTS TAB ──────────────────────────────────── */}
+        {tab === "merchants" && (
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+            <div className="border-b border-[#E5E7EB] p-4">
+              <h2 className="font-extrabold">Mağaza Yönetimi</h2>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Mağazaları onayla, askıya al veya incele.
+              </p>
+            </div>
+
+            {merchantsLoading ? (
+              <div className="flex h-32 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-[#6C3BFF]" />
+              </div>
+            ) : merchants.length === 0 ? (
+              <div className="p-8 text-center text-sm text-gray-500">
+                Henüz mağaza yok.
+              </div>
+            ) : (
+              <div className="divide-y divide-[#E5E7EB]">
+                {merchants.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex flex-col gap-3 p-4 md:flex-row md:items-center"
+                    data-testid={`admin-merchant-${m.id}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{m.name}</span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            m.is_active
+                              ? "bg-green-100 text-green-700"
+                              : "bg-orange-100 text-orange-600"
+                          }`}
+                        >
+                          {m.is_active ? "Aktif" : "Onay Bekliyor"}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-xs text-gray-500">
+                        {m.description || "—"} · {m.phone || ""}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {!m.is_active && (
                         <Button
                           size="sm"
-                          onClick={() => setMerchantApproval(m.id, "approved")}
-                          className="rounded-full bg-[#00C2A8] text-xs font-bold hover:bg-[#00A38D]"
+                          className="tap h-8 rounded-full bg-green-600 px-3 text-xs font-bold text-white hover:bg-green-700"
+                          onClick={() => approveMutation.mutate(m.id)}
+                          disabled={approveMutation.isPending}
                           data-testid={`approve-merchant-${m.id}`}
                         >
-                          Onayla
+                          <CheckCircle className="mr-1 h-3.5 w-3.5" /> Onayla
                         </Button>
                       )}
-                      {m.approvalStatus !== "suspended" && (
+                      {m.is_active && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setMerchantApproval(m.id, "suspended")}
-                          className="rounded-full border-red-200 text-xs font-bold text-red-600"
+                          className="tap h-8 rounded-full border-red-300 px-3 text-xs font-bold text-red-600 hover:bg-red-50"
+                          onClick={() => suspendMutation.mutate(m.id)}
+                          disabled={suspendMutation.isPending}
                           data-testid={`suspend-merchant-${m.id}`}
                         >
-                          Askıya al
+                          <XCircle className="mr-1 h-3.5 w-3.5" /> Askıya Al
                         </Button>
                       )}
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pending courier approvals */}
-        {state.couriers.some((c) => c.approvalStatus === "pending") && (
-          <div
-            className="mb-4 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/50 shadow-sm"
-            data-testid="admin-courier-approvals"
-          >
-            <div className="border-b border-amber-200 px-4 py-3 text-sm font-bold uppercase tracking-wide text-amber-700">
-              Onay bekleyen kuryeler
-            </div>
-            <table className="w-full text-left text-sm">
-              <thead className="bg-amber-100/50 text-xs uppercase text-amber-800">
-                <tr>
-                  <th className="px-4 py-2">Ad</th>
-                  <th className="px-4 py-2">Araç</th>
-                  <th className="px-4 py-2">Tip</th>
-                  <th className="px-4 py-2">Telefon</th>
-                  <th className="px-4 py-2 text-right">İşlem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-amber-200">
-                {state.couriers
-                  .filter((c) => c.approvalStatus === "pending")
-                  .map((c) => (
-                    <tr
-                      key={c.id}
-                      data-testid={`pending-courier-row-${c.id}`}
-                    >
-                      <td className="px-4 py-2 font-semibold">{c.name}</td>
-                      <td className="px-4 py-2 text-xs">{c.vehicle}</td>
-                      <td className="px-4 py-2 text-xs">
-                        {c.courierType === "merchant" ? "Mağaza" : "Platform"}
-                      </td>
-                      <td className="px-4 py-2 text-xs text-gray-600">
-                        {c.phone || "—"}
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            onClick={() => setCourierApproval(c.id, "approved")}
-                            className="rounded-full bg-[#00C2A8] text-xs font-bold hover:bg-[#00A38D]"
-                            data-testid={`approve-courier-${c.id}`}
-                          >
-                            Onayla
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setCourierApproval(c.id, "rejected")}
-                            className="rounded-full border-red-200 text-xs font-bold text-red-600"
-                            data-testid={`reject-courier-${c.id}`}
-                          >
-                            Reddet
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Disputes panel */}
-        {(() => {
-          const disputed = state.orders.filter((o) => o.dispute);
-          const open = disputed.filter((o) => o.dispute.status === "open");
-          if (disputed.length === 0) return null;
-          return (
-            <div
-              className="mb-4 overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm"
-              data-testid="admin-disputes-panel"
-            >
-              <div className="flex items-center justify-between border-b border-[#E5E7EB] px-4 py-3">
-                <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-amber-700">
-                  <AlertTriangle className="h-4 w-4" />
-                  Şikayetler ve çözümler
-                </div>
-                <span
-                  className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700"
-                  data-testid="open-disputes-count"
-                >
-                  {open.length} açık · {disputed.length - open.length} çözüldü
-                </span>
-              </div>
-              <table className="w-full text-left text-sm">
-                <thead className="bg-[#F7F7FB] text-xs uppercase text-gray-500">
-                  <tr>
-                    <th className="px-4 py-2">Sipariş</th>
-                    <th className="px-4 py-2">Müşteri</th>
-                    <th className="px-4 py-2">Sebep</th>
-                    <th className="px-4 py-2">Mesaj</th>
-                    <th className="px-4 py-2">Durum</th>
-                    <th className="px-4 py-2 text-right">İşlem</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E5E7EB]">
-                  {disputed.map((o) => (
-                    <tr
-                      key={o.id}
-                      data-testid={`dispute-row-${o.id}`}
-                    >
-                      <td className="px-4 py-2 font-bold text-[#6C3BFF]">
-                        {o.id}
-                      </td>
-                      <td className="px-4 py-2 text-xs">
-                        {findCustomer(o.customerId)?.name}
-                      </td>
-                      <td className="px-4 py-2 text-xs">
-                        {o.dispute.reason}
-                      </td>
-                      <td className="px-4 py-2 text-xs text-gray-600 max-w-[260px] truncate">
-                        "{o.dispute.message}"
-                      </td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                            o.dispute.status === "open"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-emerald-100 text-emerald-700"
-                          }`}
-                        >
-                          {o.dispute.status === "open" ? "Açık" : "Çözüldü"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        {o.dispute.status === "open" ? (
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setResolveDialog({ orderId: o.id, total: o.total });
-                              setResolveForm({
-                                resolution: "refund_full",
-                                refundAmount: o.total,
-                                note: "",
-                              });
-                            }}
-                            className="rounded-full bg-[#6C3BFF] text-xs font-bold hover:bg-[#582CD6]"
-                            data-testid={`resolve-dispute-${o.id}`}
-                          >
-                            Çöz
-                          </Button>
-                        ) : (
-                          <span className="text-[11px] text-gray-500">
-                            {o.dispute.resolution}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        })()}
-
-        {/* Resolve dispute modal */}
-        {resolveDialog && (
-          <div
-            className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4"
-            onClick={() => setResolveDialog(null)}
-            data-testid="resolve-dispute-modal"
-          >
-            <div
-              className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 className="mb-3 text-lg font-bold">
-                Şikayeti çöz · {resolveDialog.orderId}
-              </h2>
-              <div className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
-                    Karar
-                  </label>
-                  <Select
-                    value={resolveForm.resolution}
-                    onValueChange={(v) => {
-                      const refund =
-                        v === "refund_full"
-                          ? resolveDialog.total
-                          : v === "refund_partial"
-                            ? +(resolveDialog.total / 2).toFixed(2)
-                            : 0;
-                      setResolveForm({
-                        ...resolveForm,
-                        resolution: v,
-                        refundAmount: refund,
-                      });
-                    }}
-                  >
-                    <SelectTrigger data-testid="resolve-resolution">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="refund_full">Tam iade</SelectItem>
-                      <SelectItem value="refund_partial">Kısmi iade</SelectItem>
-                      <SelectItem value="no_refund">İade yok</SelectItem>
-                      <SelectItem value="reorder_voucher">
-                        Yeni sipariş kuponu
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
-                    İade tutarı ($)
-                  </label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={resolveForm.refundAmount}
-                    onChange={(e) =>
-                      setResolveForm({
-                        ...resolveForm,
-                        refundAmount: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    disabled={resolveForm.resolution === "no_refund"}
-                    data-testid="resolve-refund-amount"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
-                    Yönetici notu
-                  </label>
-                  <Input
-                    value={resolveForm.note}
-                    onChange={(e) =>
-                      setResolveForm({ ...resolveForm, note: e.target.value })
-                    }
-                    placeholder="Müşteriye iletilecek not"
-                    data-testid="resolve-note"
-                  />
-                </div>
-              </div>
-              <div className="mt-5 flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  className="rounded-full"
-                  onClick={() => setResolveDialog(null)}
-                  data-testid="resolve-dialog-cancel"
-                >
-                  İptal
-                </Button>
-                <Button
-                  className="rounded-full bg-[#6C3BFF] hover:bg-[#582CD6]"
-                  onClick={() => {
-                    resolveDispute(
-                      resolveDialog.orderId,
-                      resolveForm.resolution,
-                      resolveForm.refundAmount,
-                      resolveForm.note,
-                    );
-                    setResolveDialog(null);
-                  }}
-                  data-testid="resolve-dialog-submit"
-                >
-                  Kararı kaydet
-                </Button>
-              </div>
-            </div>
+        {/* ── PLACEHOLDER TABS ───────────────────────────────── */}
+        {(tab === "couriers" || tab === "customers") && (
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-sm">
+            <div className="text-4xl">🚧</div>
+            <h2 className="mt-3 font-bold">Yakında</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Bu bölüm production sprint 2'de aktif olacak.
+            </p>
           </div>
         )}
-
-        {/* Event feed */}
-        <div
-          className="mb-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm"
-          data-testid="admin-event-feed"
-        >
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#6C3BFF]">
-            Son olaylar
-          </div>
-          {recentEvents(15).length === 0 ? (
-            <div className="text-xs text-gray-400">Henüz olay yok.</div>
-          ) : (
-            <ul className="space-y-1.5 text-xs">
-              {recentEvents(15).map((e, idx) => (
-                <li
-                  key={`${e.orderId}-${idx}`}
-                  className="flex items-center justify-between border-b border-dashed border-gray-100 pb-1.5 last:border-0"
-                >
-                  <span>
-                    <span className="font-bold text-[#6C3BFF]">{e.orderId}</span>{" "}
-                    →{" "}
-                    <span className="font-semibold">
-                      {STATE_LABELS[e.status] || e.status}
-                    </span>
-                    {e.by === "admin" && (
-                      <span className="ml-1 rounded-full bg-purple-100 px-1.5 py-0.5 text-[9px] font-bold text-purple-700">
-                        admin
-                      </span>
-                    )}
-                    {e.reason && (
-                      <span className="ml-1 text-gray-500">· {e.reason}</span>
-                    )}
-                  </span>
-                  <span className="text-[10px] text-gray-400">
-                    {new Date(e.at).toLocaleTimeString("tr-TR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          </div>
-
-        {/* Filters */}
-        <div className="mb-3 flex flex-col gap-2 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm md:flex-row md:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Sipariş, mağaza, kurye ara…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-10 rounded-full border-[#E5E7EB] bg-[#F7F7FB] pl-10 text-sm"
-              data-testid="admin-search-input"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger
-              className="h-10 w-full rounded-full border-[#E5E7EB] bg-white text-sm md:w-[220px]"
-              data-testid="admin-status-filter"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tüm durumlar</SelectItem>
-              {ORDER_STATES.map((s) => (
-                <SelectItem
-                  key={s}
-                  value={s}
-                  data-testid={`admin-filter-option-${s}`}
-                >
-                  {STATE_LABELS[s]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-[#F7F7FB] text-xs uppercase text-gray-500">
-                <tr>
-                  <th className="px-4 py-3">Sipariş</th>
-                  <th className="px-4 py-3">Durum</th>
-                  <th className="px-4 py-3">Müşteri</th>
-                  <th className="px-4 py-3">Mağaza</th>
-                  <th className="px-4 py-3">Kurye</th>
-                  <th className="px-4 py-3">Toplam</th>
-                  <th className="px-4 py-3">İade</th>
-                  <th className="px-4 py-3 text-right">Kontroller</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E5E7EB]">
-                {filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-4 py-10 text-center text-sm text-gray-500"
-                    >
-                      Henüz sipariş yok. Müşteri rolünden bir sipariş verin.
-                    </td>
-                  </tr>
-                )}
-                {filtered.map((o) => {
-                  const merchant = findMerchant(o.merchantId);
-                  const courier = o.courierId ? findCourier(o.courierId) : null;
-                  const customer = findCustomer(o.customerId);
-                  return (
-                    <tr
-                      key={o.id}
-                      className="hover:bg-[#F7F7FB]"
-                      data-testid={`admin-row-${o.id}`}
-                    >
-                      <td className="px-4 py-3 font-bold">{o.id}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={o.status} />
-                      </td>
-                      <td className="px-4 py-3">{customer?.name}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold">{merchant?.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {merchant?.type}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {o.selfDelivery ? (
-                          <span className="text-xs font-semibold text-[#6C3BFF]">
-                            Mağaza teslim
-                          </span>
-                        ) : (
-                          <Select
-                            value={o.courierId || "unassigned"}
-                            onValueChange={(v) =>
-                              adminForceAssign(
-                                o.id,
-                                v === "unassigned" ? null : v,
-                              )
-                            }
-                          >
-                            <SelectTrigger
-                              className="h-9 w-[160px] rounded-full border-[#E5E7EB] bg-white text-xs"
-                              data-testid={`admin-assign-${o.id}`}
-                            >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="unassigned">
-                                Atanmamış
-                              </SelectItem>
-                              {state.couriers.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>
-                                  {c.name} · {c.status === "idle" ? "boşta" : "meşgul"}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 font-semibold">
-                        ₺{o.total.toFixed(2)}
-                      </td>
-                      <td className="px-4 py-3">
-                        {o.refund?.amount > 0 ? (
-                          <span className="text-xs font-bold text-red-600">
-                            − ₺{o.refund.amount.toFixed(2)}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setRefundOrderId(o.id)}
-                            disabled={
-                              (o.refund?.amount || 0) >= o.total ||
-                              o.status === "cancelled"
-                            }
-                            className="rounded-full border-[#E5E7EB] font-bold text-[#6C3BFF] disabled:opacity-40"
-                            data-testid={`admin-refund-${o.id}`}
-                          >
-                            <RotateCcw className="mr-1 h-3 w-3" /> İade
-                          </Button>
-                          <Select
-                            value={o.status}
-                            onValueChange={(v) => adminForceStatus(o.id, v)}
-                          >
-                            <SelectTrigger
-                              className="h-9 w-[160px] rounded-full border-[#E5E7EB] bg-white text-xs"
-                              data-testid={`admin-status-override-${o.id}`}
-                            >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {[...ORDER_STATES, "cancelled"].map((s) => (
-                                <SelectItem key={s} value={s}>
-                                  Ayarla: {STATE_LABELS[s] || s}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </section>
-
-      <RefundDialog
-        order={refundOrder}
-        open={!!refundOrderId}
-        onOpenChange={(o) => !o && setRefundOrderId(null)}
-        onApply={(orderId, amount, note) => {
-          adminApplyRefund(orderId, amount, note);
-        }}
-      />
-    </div>
-  );
-}
-
-function SideItem({ icon: Icon, label, active }) {
-  return (
-    <button
-      className={`tap flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold ${
-        active
-          ? "bg-[#6C3BFF] text-white shadow-sm"
-          : "text-gray-600 hover:bg-[#F7F7FB]"
-      }`}
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </button>
-  );
-}
-
-function MetricCard({ label, value, accent, warn }) {
-  return (
-    <div
-      className={`rounded-2xl border bg-white p-3 shadow-sm ${
-        warn ? "border-red-300" : "border-[#E5E7EB]"
-      }`}
-    >
-      <div
-        className="text-[11px] font-semibold uppercase tracking-wide"
-        style={{ color: accent }}
-      >
-        {label}
-      </div>
-      <div className="mt-0.5 flex items-center gap-1.5 text-2xl font-extrabold">
-        {value}
-        {warn && <AlertTriangle className="h-4 w-4 text-red-500" />}
-      </div>
     </div>
   );
 }

@@ -36,7 +36,7 @@ export default function CustomerOrders() {
           </div>
           <h2 className="mt-4 text-lg font-bold">Henüz siparişiniz yok</h2>
           <p className="mt-1 text-sm text-gray-500">İlk siparişinizi verin, burada görünsün.</p>
-          <Button onClick={() => navigate("/customer")} className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]" data-testid="empty-orders-browse">
+          <Button onClick={() => navigate("/markets")} className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]" data-testid="empty-orders-browse">
             Mağazalara göz at
           </Button>
         </div>
