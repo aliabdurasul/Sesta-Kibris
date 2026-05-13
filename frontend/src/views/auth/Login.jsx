@@ -63,6 +63,14 @@ const DEMO_ACCOUNTS = [
 
 const DEMO_PASSWORD = "123456";
 
+// Map UI role key → DB role string stored in user_roles
+const DEMO_DB_ROLES = {
+  customer: "customer",
+  merchant: "merchant_owner",
+  courier: "courier",
+  admin: "admin",
+};
+
 export default function Login() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
@@ -116,17 +124,56 @@ export default function Login() {
     setEmail(account.email);
     setPassword(DEMO_PASSWORD);
 
-    // Seed demo data first (idempotent — safe to call every time)
+    // Seed demo data (idempotent — safe every time, non-fatal if env missing)
     setSeedingDemo(true);
     try {
       await fetch("/api/seed", { method: "POST" });
     } catch {
-      // Seed failure is non-fatal; attempt login anyway
+      // ignore
     } finally {
       setSeedingDemo(false);
     }
 
-    await doSignIn(null, account.email, DEMO_PASSWORD);
+    setLoading(true);
+    try {
+      const user = await signIn(account.email, DEMO_PASSWORD);
+      // Supabase auth succeeded — resolve DB role then navigate
+      if (nextPath) {
+        navigate(nextPath, { replace: true });
+        return;
+      }
+      const { getUserRoles } = await import("@/services/auth.service");
+      let primaryRole = account.role;
+      try {
+        const rolesData = await getUserRoles(user.id);
+        if (rolesData.includes("admin")) primaryRole = "admin";
+        else if (
+          rolesData.includes("merchant_owner") ||
+          rolesData.includes("merchant_staff")
+        )
+          primaryRole = "merchant";
+        else if (rolesData.includes("courier")) primaryRole = "courier";
+        else primaryRole = "customer";
+      } catch {
+        // fallback to account.role
+      }
+      navigate(ROLE_ROUTES[primaryRole] || "/", { replace: true });
+    } catch {
+      // Supabase auth failed (wrong key / offline) — write demo session to localStorage
+      const dbRole = DEMO_DB_ROLES[account.role] || "customer";
+      localStorage.setItem(
+        "sesta_demo_session",
+        JSON.stringify({
+          id: `demo-${account.role}`,
+          email: account.email,
+          full_name: account.label,
+          role: dbRole,
+        }),
+      );
+      navigate(ROLE_ROUTES[account.role] || "/", { replace: true });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isSubmitting = loading || seedingDemo;

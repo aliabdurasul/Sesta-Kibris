@@ -43,7 +43,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Initialize: check existing session
+  // Initialize: check existing session, fall back to demo localStorage session
   useEffect(() => {
     let mounted = true;
 
@@ -52,12 +52,31 @@ export function AuthProvider({ children }) {
         const session = await authService.getSession();
         if (mounted && session?.user) {
           await loadUserData(session.user);
+          if (mounted) setLoading(false);
+          return;
         }
       } catch (err) {
         console.error('Session check failed:', err);
-      } finally {
-        if (mounted) setLoading(false);
       }
+
+      // Supabase unavailable or no session — check for localStorage demo session
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('sesta_demo_session');
+        if (raw) {
+          try {
+            const demo = JSON.parse(raw);
+            if (mounted && demo?.id && demo?.role) {
+              setUser({ id: demo.id, email: demo.email });
+              setProfile({ id: demo.id, full_name: demo.full_name, email: demo.email });
+              setRoles([demo.role]);
+            }
+          } catch {
+            localStorage.removeItem('sesta_demo_session');
+          }
+        }
+      }
+
+      if (mounted) setLoading(false);
     }
     init();
 
@@ -102,7 +121,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await authService.signOut();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sesta_demo_session');
+    }
+    try {
+      await authService.signOut();
+    } catch {
+      // ignore — might fail if Supabase is unconfigured (demo-only session)
+    }
     await loadUserData(null);
   }, [loadUserData]);
 

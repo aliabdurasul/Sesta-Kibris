@@ -35,9 +35,12 @@ export default function CustomerMarkets() {
   const [chip, setChip] = useState("all");
   const [query, setQuery] = useState("");
 
-  // ── Real data from Supabase, seed fallback when empty ───
+  // ── Real data from Supabase, seed fallback when empty or on error ───
   const { data: rawMerchants = [], isLoading, isError } = useActiveMerchants();
-  const merchants = !isLoading && rawMerchants.length === 0 ? SEED_FALLBACK : rawMerchants;
+  const merchants =
+    isError || (!isLoading && rawMerchants.length === 0)
+      ? SEED_FALLBACK
+      : rawMerchants;
 
   const filtered = useMemo(() => {
     return merchants.filter((m) => {
@@ -55,14 +58,6 @@ export default function CustomerMarkets() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-[#6C3BFF]" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="px-4 pt-8 text-center">
-        <p className="text-sm text-gray-500">Mağazalar yüklenemedi. Lütfen tekrar deneyin.</p>
       </div>
     );
   }
