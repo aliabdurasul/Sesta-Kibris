@@ -10,11 +10,16 @@ export class PaymentError extends Error {
 }
 
 const getClient = () => {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new PaymentError('Supabase is not configured.');
+  try {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      throw new PaymentError('Supabase is not configured.');
+    }
+    return client;
+  } catch (e) {
+    if (e instanceof PaymentError) throw e;
+    throw new PaymentError(e instanceof Error ? e.message : 'Supabase init failed');
   }
-  return client;
 };
 
 /** Create a COD payment record when order is placed. */

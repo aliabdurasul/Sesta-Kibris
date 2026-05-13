@@ -1,12 +1,11 @@
 "use client";
 // ══════════════════════════════════════════════════════════════
-// Login / Identity — Role-picker onboarding screen
-// No passwords. No email. No Supabase Auth.
-// User picks a name + role → inserted into app_users → localStorage.
+// Login — Supabase Auth (email + password)
 // ══════════════════════════════════════════════════════════════
 
-import React, { useState } from "react";
-import { useNavigate } from "@/lib/router-bridge";
+import React, { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { useNavigate, Link } from "@/lib/router-bridge";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,68 +17,29 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  AlertCircle,
-  Loader2,
-  Store,
-  Bike,
-  ShieldCheck,
-  User,
-} from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 
-const ROLES = [
-  {
-    id: "customer",
-    label: "Müşteri",
-    desc: "Sipariş ver, mağazaları keşfet",
-    icon: User,
-    color: "border-[#6C3BFF] text-[#6C3BFF] bg-purple-50",
-    route: "/",
-  },
-  {
-    id: "merchant",
-    label: "Satıcı",
-    desc: "Mağaza aç, ürün ve sipariş yönet",
-    icon: Store,
-    color: "border-blue-500 text-blue-600 bg-blue-50",
-    route: "/merchant",
-  },
-  {
-    id: "courier",
-    label: "Kurye",
-    desc: "Siparişleri teslim et, kazan",
-    icon: Bike,
-    color: "border-[#00C2A8] text-[#00C2A8] bg-cyan-50",
-    route: "/courier",
-  },
-  {
-    id: "admin",
-    label: "Admin",
-    desc: "Sistemi yönet, mağazaları onayla",
-    icon: ShieldCheck,
-    color: "border-orange-400 text-orange-500 bg-orange-50",
-    route: "/admin",
-  },
-];
-
-export default function Login() {
+function LoginForm() {
   const navigate = useNavigate();
+  const searchParams = useSearchParams();
   const { signIn } = useAuth();
-  const [name, setName] = useState("");
-  const [selectedRole, setSelectedRole] = useState(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) { setError("İsminizi girin."); return; }
-    if (!selectedRole) { setError("Bir rol seçin."); return; }
-
     setError("");
     setLoading(true);
     try {
-      await signIn({ name: name.trim(), role: selectedRole.id });
-      navigate(selectedRole.route, { replace: true });
+      await signIn(email.trim(), password);
+      const next = searchParams.get("next");
+      const dest =
+        next && next.startsWith("/") && !next.startsWith("//")
+          ? next
+          : "/";
+      navigate(dest, { replace: true });
     } catch (err) {
       setError(err.message || "Giriş başarısız. Lütfen tekrar deneyin.");
     } finally {
@@ -95,15 +55,15 @@ export default function Login() {
             <span className="text-2xl font-extrabold text-white">SK</span>
           </div>
           <CardTitle className="text-2xl font-extrabold text-[#1A1A1A]">
-            SestaKibris'e Hoş Geldiniz
+            Giriş Yap
           </CardTitle>
           <CardDescription className="text-gray-500">
-            Devam etmek için adınızı girin ve rolünüzü seçin
+            E-posta ve şifrenizle devam edin
           </CardDescription>
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600">
                 <AlertCircle className="h-4 w-4 shrink-0" />
@@ -111,70 +71,79 @@ export default function Login() {
               </div>
             )}
 
-            {/* Name */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-semibold">
-                Adınız Soyadınız
+              <Label htmlFor="email" className="text-sm font-semibold">
+                E-posta
               </Label>
               <Input
-                id="name"
-                type="text"
-                placeholder="Mehmet Yılmaz"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="ornek@posta.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 className="h-12 rounded-xl"
-                data-testid="login-name"
+                data-testid="login-email"
               />
             </div>
 
-            {/* Role picker */}
             <div className="space-y-2">
-              <Label className="text-sm font-semibold">Rolünüzü Seçin</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {ROLES.map((r) => {
-                  const Icon = r.icon;
-                  const active = selectedRole?.id === r.id;
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => setSelectedRole(r)}
-                      data-testid={`role-${r.id}`}
-                      className={`flex flex-col items-start gap-1 rounded-xl border-2 p-3 text-left transition-all ${
-                        active
-                          ? r.color + " shadow-sm"
-                          : "border-[#E5E7EB] bg-white text-gray-600 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span className="text-sm font-bold">{r.label}</span>
-                      </div>
-                      <span className="text-[10px] leading-tight opacity-70">
-                        {r.desc}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <Label htmlFor="password" className="text-sm font-semibold">
+                Şifre
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="h-12 rounded-xl"
+                data-testid="login-password"
+              />
             </div>
 
             <Button
               type="submit"
-              disabled={loading || !name.trim() || !selectedRole}
+              disabled={loading}
               className="h-14 w-full rounded-full bg-[#6C3BFF] text-base font-bold text-white hover:bg-[#582CD6] disabled:opacity-50"
               data-testid="login-submit"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                "Devam Et"
+                "Giriş Yap"
               )}
             </Button>
+
+            <p className="text-center text-sm text-gray-500">
+              Hesabınız yok mu?{" "}
+              <Link
+                to="/register"
+                className="font-semibold text-[#6C3BFF] hover:underline"
+              >
+                Kayıt ol
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#F7F7FB]">
+          <Loader2 className="h-8 w-8 animate-spin text-[#6C3BFF]" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

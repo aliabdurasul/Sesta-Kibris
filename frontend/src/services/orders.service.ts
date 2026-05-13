@@ -15,11 +15,16 @@ export class OrderError extends Error {
 }
 
 const getClient = () => {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new OrderError('Supabase is not configured.');
+  try {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      throw new OrderError('Supabase is not configured.');
+    }
+    return client;
+  } catch (e) {
+    if (e instanceof OrderError) throw e;
+    throw new OrderError(e instanceof Error ? e.message : 'Supabase init failed');
   }
-  return client;
 };
 
 // ─── Queries ─────────────────────────────────────────────────
@@ -277,14 +282,8 @@ export function subscribeToOrders(
 
 async function emitEvent(type: string, entityType: string, entityId: string, payload: Record<string, unknown>) {
   const supabase = getClient();
-  // Auth-free: read actor id from localStorage identity (no supabase.auth.getUser())
-  let actorId: string | null = null;
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = localStorage.getItem('sesta_user');
-      if (raw) actorId = JSON.parse(raw).id ?? null;
-    } catch { /* ignore */ }
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+  const actorId = user?.id ?? null;
   await supabase.from('events').insert({
     type,
     entity_type: entityType,

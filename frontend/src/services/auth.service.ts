@@ -14,11 +14,16 @@ export class AuthError extends Error {
 }
 
 const getClient = () => {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new AuthError('Supabase is not configured.');
+  try {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      throw new AuthError('Supabase is not configured.');
+    }
+    return client;
+  } catch (e) {
+    if (e instanceof AuthError) throw e;
+    throw new AuthError(e instanceof Error ? e.message : 'Supabase init failed');
   }
-  return client;
 };
 
 /** Sign up with email + password. Auto-creates profile + customer role via DB trigger. */

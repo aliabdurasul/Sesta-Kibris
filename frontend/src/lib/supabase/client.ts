@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logPublicEnvDiagnostics, publicEnv, publicEnvState } from "@/lib/env";
 
@@ -6,59 +6,62 @@ let browserClient: SupabaseClient | null = null;
 let warned = false;
 let lastUrl = "";
 let lastKey = "";
-let debugLogged = false;
+
+declare global {
+  interface Window {
+    __SUPABASE_DEBUG?: { url: string; keyPrefix: string };
+  }
+}
 
 /**
- * Single browser Supabase client for all REST/RPC calls.
- *
- * Uses @supabase/supabase-js createClient (not @supabase/ssr createBrowserClient)
- * so we do NOT attach cookie-based auth refresh — that was causing /auth/v1/token
- * requests and 401 "invalid API key" when no real Supabase Auth session exists.
- *
- * Auth is disabled on this client (persistSession: false). This app uses
- * application-level identity (localStorage) per AuthContext.
+ * Single canonical browser Supabase client. All services import this only.
+ * Uses @supabase/ssr createBrowserClient for Supabase Auth session storage.
  */
 export function getSupabaseBrowserClient(): SupabaseClient | null {
+  if (typeof window === "undefined") return null;
+
   if (!publicEnvState.isSupabaseConfigured) {
     if (!warned) {
       warned = true;
       logPublicEnvDiagnostics("supabase-browser");
     }
-    return null;
+    const detail =
+      publicEnvState.issues.length > 0
+        ? publicEnvState.issues.join("; ")
+        : publicEnvState.missingNextPublic.join(", ");
+    throw new Error(`[SUPABASE] Missing or invalid env: ${detail}`);
   }
-  if (typeof window === "undefined") return null;
 
   const url = publicEnv.supabaseUrl.trim();
   const key = publicEnv.supabaseAnonKey.trim();
+
+  if (!url || !key) {
+    throw new Error("[SUPABASE] NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required.");
+  }
 
   if (browserClient && (lastUrl !== url || lastKey !== key)) {
     browserClient = null;
   }
 
-  if (
-    process.env.NEXT_PUBLIC_DEBUG_SUPABASE === "true" &&
-    !debugLogged &&
-    typeof window !== "undefined"
-  ) {
-    debugLogged = true;
-    // eslint-disable-next-line no-console
-    console.info("[Supabase debug]", {
-      url,
-      keyStartsWith: key.slice(0, 12),
-      keyLength: key.length,
-    });
-  }
-
   if (!browserClient) {
-    browserClient = createClient(url, key, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
+    // eslint-disable-next-line no-console -- production recovery: verify bundled env at runtime
+    console.log("[SUPABASE INIT]", {
+      url: process.env.NEXT_PUBLIC_SUPABASE_URL?.trim(),
+      keyPrefix: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()?.slice(0, 20),
+      keyLength: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()?.length,
     });
+
+    browserClient = createBrowserClient(url, key);
+
     lastUrl = url;
     lastKey = key;
+
+    if (process.env.NEXT_PUBLIC_DEBUG_SUPABASE === "true") {
+      window.__SUPABASE_DEBUG = {
+        url,
+        keyPrefix: key.slice(0, 15),
+      };
+    }
   }
 
   return browserClient;

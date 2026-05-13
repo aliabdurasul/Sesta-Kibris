@@ -1,62 +1,62 @@
 "use client";
 import React from "react";
 import { useNavigate, useParams } from "@/lib/router-bridge";
-import { ArrowLeft, Plus, Minus, Clock, ShoppingCart, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Clock, ShoppingCart, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMerchant, useMerchantProducts } from "@/hooks/useMerchants";
 import { useCart } from "@/hooks/useCart";
 import { MERCHANT_TYPE_LABELS, formatPrice } from "@/lib/constants";
-import { seedMerchants } from "@/data/seed";
-
-function seedMerchantToUI(s) {
-  const prepMin = parseInt((s.delivery || "15").split(/[–-]/)[0], 10) || 15;
-  return {
-    id: s.id,
-    name: s.name,
-    type: s.type,
-    description: s.tagline || "",
-    address: s.address || "",
-    avg_prep_minutes: prepMin,
-    is_accepting_orders: true,
-    logo_url: s.image || null,
-    cover_image_url: s.image || null,
-  };
-}
-
-function seedProductToUI(p) {
-  return {
-    id: p.id,
-    name: p.name,
-    price: p.price,
-    image_url: p.image || null,
-    stock_status: "in_stock",
-  };
-}
 
 export default function CustomerMerchant() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addItem, decrementItem, cart, itemCount } = useCart();
 
-  const { data: dbMerchant, isLoading: merchantLoading } = useMerchant(id);
-  const { data: dbProducts = [], isLoading: productsLoading } = useMerchantProducts(id);
+  const {
+    data: merchant,
+    isLoading: merchantLoading,
+    isError: merchantError,
+    error: merchantErrObj,
+  } = useMerchant(id);
+  const {
+    data: products = [],
+    isLoading: productsLoading,
+    isError: productsError,
+    error: productsErrObj,
+  } = useMerchantProducts(id);
 
   const isLoading = merchantLoading || productsLoading;
-
-  // Seed fallback when Supabase returns nothing for this ID
-  const seedMatch = !dbMerchant ? seedMerchants.find((s) => s.id === id) : null;
-  const merchant = dbMerchant || (seedMatch ? seedMerchantToUI(seedMatch) : null);
-  const products =
-    dbProducts.length > 0
-      ? dbProducts
-      : seedMatch
-      ? (seedMatch.products || []).map(seedProductToUI)
-      : [];
+  const loadFailed = merchantError || productsError;
+  const loadErrorMessage =
+    merchantErrObj?.message || productsErrObj?.message || "Veri yüklenemedi.";
 
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-[#6C3BFF]" />
+      </div>
+    );
+  }
+
+  if (loadFailed) {
+    return (
+      <div className="p-6" data-testid="merchant-page">
+        <div className="mx-auto max-w-md rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+          <div className="flex gap-2">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-semibold">Mağaza yüklenemedi</p>
+              <p className="mt-2 text-red-700">{loadErrorMessage}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="tap mt-4 text-sm font-semibold text-[#6C3BFF] underline"
+          >
+            Geri dön
+          </button>
+        </div>
       </div>
     );
   }
@@ -78,7 +78,6 @@ export default function CustomerMerchant() {
 
   return (
     <div className="gg-rise pb-24" data-testid="merchant-page">
-      {/* Hero */}
       <div className="relative h-48 w-full overflow-hidden">
         {merchant.cover_image_url || merchant.logo_url ? (
           <img
@@ -114,7 +113,6 @@ export default function CustomerMerchant() {
         </div>
       </div>
 
-      {/* Products */}
       <div className="px-4 pt-4">
         {cartMerchantMismatch && (
           <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
@@ -207,7 +205,6 @@ export default function CustomerMerchant() {
         </div>
       </div>
 
-      {/* Sticky cart bar */}
       {cartItemCount > 0 && (
         <div className="fixed bottom-24 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4">
           <Button

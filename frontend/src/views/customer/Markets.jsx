@@ -2,26 +2,9 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "@/lib/router-bridge";
 import { Input } from "@/components/ui/input";
-import { Search, Clock, Loader2 } from "lucide-react";
+import { Search, Clock, Loader2, AlertCircle } from "lucide-react";
 import { useActiveMerchants } from "@/hooks/useMerchants";
 import { MERCHANT_TYPE_LABELS } from "@/lib/constants";
-import { seedMerchants } from "@/data/seed";
-
-// Map seed merchant shape → Supabase UI shape for the fallback
-function toUIShape(s) {
-  const prepMin = parseInt((s.delivery || "15").split(/[–-]/)[0], 10) || 15;
-  return {
-    id: s.id,
-    name: s.name,
-    type: s.type,
-    description: s.tagline || "",
-    address: s.address || "",
-    avg_prep_minutes: prepMin,
-    is_accepting_orders: true,
-    logo_url: s.image || null,
-  };
-}
-const SEED_FALLBACK = seedMerchants.map(toUIShape);
 
 const CHIPS = [
   { key: "all", label: "Hepsi" },
@@ -35,12 +18,7 @@ export default function CustomerMarkets() {
   const [chip, setChip] = useState("all");
   const [query, setQuery] = useState("");
 
-  // ── Real data from Supabase, seed fallback when empty or on error ───
-  const { data: rawMerchants = [], isLoading, isError } = useActiveMerchants();
-  const merchants =
-    isError || (!isLoading && rawMerchants.length === 0)
-      ? SEED_FALLBACK
-      : rawMerchants;
+  const { data: merchants = [], isLoading, isError, error } = useActiveMerchants();
 
   const filtered = useMemo(() => {
     return merchants.filter((m) => {
@@ -64,7 +42,6 @@ export default function CustomerMarkets() {
 
   return (
     <div className="gg-rise px-4 pb-6 pt-4" data-testid="customer-markets">
-      {/* Greeting */}
       <div className="mb-4">
         <h1 className="text-2xl font-extrabold tracking-tight">
           Tüm Marketler
@@ -74,7 +51,22 @@ export default function CustomerMarkets() {
         </p>
       </div>
 
-      {/* Search */}
+      {isError && (
+        <div
+          className="mb-4 flex gap-2 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          role="alert"
+        >
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <div>
+            <p className="font-semibold">Mağazalar yüklenemedi</p>
+            <p className="mt-1 text-red-700">
+              {error?.message ||
+                "Supabase bağlantısı veya anahtarlarını kontrol edin (401 genelde yanlış anon key)."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
@@ -86,7 +78,6 @@ export default function CustomerMarkets() {
         />
       </div>
 
-      {/* Chips */}
       <div
         className="no-scrollbar -mx-4 mb-5 flex gap-2 overflow-x-auto px-4"
         data-testid="category-chips"
@@ -110,7 +101,6 @@ export default function CustomerMarkets() {
         })}
       </div>
 
-      {/* Merchants list */}
       <section>
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-600">
           {filtered.length} Mağaza
@@ -156,9 +146,11 @@ export default function CustomerMarkets() {
               </div>
             </button>
           ))}
-          {filtered.length === 0 && (
+          {!isError && filtered.length === 0 && (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
-              Aramanızla eşleşen mağaza yok.
+              {merchants.length === 0
+                ? "Henüz aktif mağaza yok veya veritabanı boş."
+                : "Aramanızla eşleşen mağaza yok."}
             </div>
           )}
         </div>

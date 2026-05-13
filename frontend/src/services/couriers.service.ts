@@ -11,11 +11,16 @@ export class CourierError extends Error {
 }
 
 const getClient = () => {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new CourierError('Supabase is not configured.');
+  try {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      throw new CourierError('Supabase is not configured.');
+    }
+    return client;
+  } catch (e) {
+    if (e instanceof CourierError) throw e;
+    throw new CourierError(e instanceof Error ? e.message : 'Supabase init failed');
   }
-  return client;
 };
 
 export async function getCourierProfile(userId: string) {

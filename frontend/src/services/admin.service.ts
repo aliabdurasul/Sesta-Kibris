@@ -10,11 +10,16 @@ export class AdminError extends Error {
 }
 
 const getClient = () => {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new AdminError('Supabase is not configured.');
+  try {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      throw new AdminError('Supabase is not configured.');
+    }
+    return client;
+  } catch (e) {
+    if (e instanceof AdminError) throw e;
+    throw new AdminError(e instanceof Error ? e.message : 'Supabase init failed');
   }
-  return client;
 };
 
 /** Approve a merchant (set is_active = true). */

@@ -11,11 +11,16 @@ export class MerchantError extends Error {
 }
 
 const getClient = () => {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new MerchantError('Supabase is not configured.');
+  try {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      throw new MerchantError('Supabase is not configured.');
+    }
+    return client;
+  } catch (e) {
+    if (e instanceof MerchantError) throw e;
+    throw new MerchantError(e instanceof Error ? e.message : 'Supabase init failed');
   }
-  return client;
 };
 
 // ─── Queries ─────────────────────────────────────────────────

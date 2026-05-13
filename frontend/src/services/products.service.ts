@@ -10,11 +10,16 @@ export class ProductError extends Error {
 }
 
 const getClient = () => {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new ProductError('Supabase is not configured.');
+  try {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      throw new ProductError('Supabase is not configured.');
+    }
+    return client;
+  } catch (e) {
+    if (e instanceof ProductError) throw e;
+    throw new ProductError(e instanceof Error ? e.message : 'Supabase init failed');
   }
-  return client;
 };
 
 /** Create a product for a merchant. */
