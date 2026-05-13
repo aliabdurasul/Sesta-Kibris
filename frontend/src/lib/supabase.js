@@ -1,3 +1,2 @@
-export {
-	getSupabaseBrowserClient,
-} from "../api/supabase";
+// Canonical re-export — everything imports from here or from @/lib/supabase/client directly.
+export { getSupabaseBrowserClient } from "./supabase/client";
