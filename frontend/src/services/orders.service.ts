@@ -277,13 +277,19 @@ export function subscribeToOrders(
 
 async function emitEvent(type: string, entityType: string, entityId: string, payload: Record<string, unknown>) {
   const supabase = getClient();
-  // TODO: Stream events to audit logs/analytics and enqueue background jobs (dispatch, SLA alerts).
-  const { data: { user } } = await supabase.auth.getUser();
+  // Auth-free: read actor id from localStorage identity (no supabase.auth.getUser())
+  let actorId: string | null = null;
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('sesta_user');
+      if (raw) actorId = JSON.parse(raw).id ?? null;
+    } catch { /* ignore */ }
+  }
   await supabase.from('events').insert({
     type,
     entity_type: entityType,
     entity_id: entityId,
     payload,
-    actor: user?.id || null,
+    actor: actorId,
   }).then(() => { /* fire and forget */ });
 }

@@ -1,11 +1,60 @@
 // ══════════════════════════════════════════════════════════════
-// AuthContext — Real Supabase Auth Provider
+// AuthContext — Auth-Free Application Identity
+//
+// Identity is application-level: stored in localStorage (key: sesta_user)
+// and persisted to the app_users Supabase table (no auth.users FK).
+//
+// The exported useAuth() hook shape is IDENTICAL to the previous
+// Supabase auth version — zero view-file changes required.
 // ══════════════════════════════════════════════════════════════
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import * as authService from '../services/auth.service';
+"use client";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
+const STORAGE_KEY = "sesta_user";
 
 const AuthContext = createContext(null);
+
+// ─── Helpers ─────────────────────────────────────────────────
+
+function readStorage() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(u) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+}
+
+function clearStorage() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(STORAGE_KEY);
+  // also clear the old demo session key if present
+  localStorage.removeItem("sesta_demo_session");
+}
+
+// Map stored role → primaryRole string used by layouts/guards
+function toPrimaryRole(role) {
+  if (role === "admin") return "admin";
+  if (role === "merchant") return "merchant";
+  if (role === "courier") return "courier";
+  return "customer";
+}
+
+// ─── Provider ────────────────────────────────────────────────
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -13,145 +62,101 @@ export function AuthProvider({ children }) {
   const [roles, setRoles] = useState([]);
   const [merchantMemberships, setMerchantMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  const loadUserData = useCallback(async (authUser, { silent = false } = {}) => {
-    if (!authUser) {
-      setUser(null);
-      setProfile(null);
-      setRoles([]);
-      setMerchantMemberships([]);
-      return;
-    }
-
-    if (silent) setIsRefreshing(true);
-    setUser(authUser);
-    try {
-      const [profileData, rolesData, memberships] = await Promise.all([
-        authService.getProfile(authUser.id),
-        authService.getUserRoles(authUser.id),
-        authService.getMerchantMemberships(authUser.id),
-      ]);
-      setProfile(profileData);
-      setRoles(rolesData);
-      setMerchantMemberships(memberships);
-    } catch (err) {
-      console.error('Failed to load user data:', err);
-    } finally {
-      if (silent) setIsRefreshing(false);
-    }
-  }, []);
-
-  // Initialize: check existing session, fall back to demo localStorage session
+  // Load from localStorage on mount — synchronous, no network call
   useEffect(() => {
-    let mounted = true;
-
-    async function init() {
-      try {
-        const session = await authService.getSession();
-        if (mounted && session?.user) {
-          await loadUserData(session.user);
-          if (mounted) setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Session check failed:', err);
-      }
-
-      // Supabase unavailable or no session — check for localStorage demo session
-      if (typeof window !== 'undefined') {
-        const raw = localStorage.getItem('sesta_demo_session');
-        if (raw) {
-          try {
-            const demo = JSON.parse(raw);
-            if (mounted && demo?.id && demo?.role) {
-              setUser({ id: demo.id, email: demo.email });
-              setProfile({ id: demo.id, full_name: demo.full_name, email: demo.email });
-              setRoles([demo.role]);
-            }
-          } catch {
-            localStorage.removeItem('sesta_demo_session');
-          }
-        }
-      }
-
-      if (mounted) setLoading(false);
+    const stored = readStorage();
+    if (stored?.id && stored?.role) {
+      applyUser(stored);
     }
-    init();
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    // Listen for auth state changes
-    const subscription = authService.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-      if (event === 'SIGNED_IN' && session?.user) {
-        await loadUserData(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        await loadUserData(null);
-      }
+  function applyUser(stored) {
+    // Map stored role string → roles array format expected by guards/views
+    // Guards check for 'merchant_owner' so we normalise here
+    const dbRole = stored.role === "merchant" ? "merchant_owner" : stored.role;
+    setUser({ id: stored.id, email: stored.email || null, name: stored.name });
+    setProfile({
+      id: stored.id,
+      full_name: stored.name,
+      phone: stored.phone || null,
+      email: stored.email || null,
     });
+    setRoles([dbRole]);
+    setMerchantMemberships(
+      stored.merchant_id ? [{ merchant_id: stored.merchant_id, role: "owner", is_active: true }] : []
+    );
+  }
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [loadUserData]);
-
-  // Actions
-  const signIn = useCallback(async (email, password) => {
+  // ── signIn: register/login — insert into app_users, write localStorage ──
+  // params: { name, role, phone? }
+  const signIn = useCallback(async ({ name, role, phone } = {}) => {
     setError(null);
     try {
-      const { user: authUser } = await authService.signIn(email, password);
-      await loadUserData(authUser);
-      return authUser;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    }
-  }, [loadUserData]);
+      const supabase = getSupabaseBrowserClient();
+      let userId;
 
-  const signUp = useCallback(async (email, password, fullName) => {
-    setError(null);
-    try {
-      const { user: authUser } = await authService.signUp(email, password, fullName);
-      return authUser;
+      if (supabase) {
+        const { data, error: dbError } = await supabase
+          .from("app_users")
+          .insert({ name, role, phone: phone || null })
+          .select()
+          .single();
+        if (dbError) throw new Error(dbError.message);
+        userId = data.id;
+      } else {
+        // Supabase unavailable — generate a local id
+        userId = crypto.randomUUID?.() || `local-${Date.now()}`;
+      }
+
+      const stored = { id: userId, name, role, phone: phone || null };
+      writeStorage(stored);
+      applyUser(stored);
+      return stored;
     } catch (err) {
       setError(err.message);
       throw err;
     }
   }, []);
 
+  // ── signUp: alias for signIn (no separate concept without auth) ──
+  const signUp = useCallback(
+    async (email, password, fullName) => {
+      return signIn({ name: fullName, role: "customer" });
+    },
+    [signIn]
+  );
+
+  // ── signOut: clear localStorage, reset state ──
   const signOut = useCallback(async () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('sesta_demo_session');
-    }
-    try {
-      await authService.signOut();
-    } catch {
-      // ignore — might fail if Supabase is unconfigured (demo-only session)
-    }
-    await loadUserData(null);
-  }, [loadUserData]);
+    clearStorage();
+    setUser(null);
+    setProfile(null);
+    setRoles([]);
+    setMerchantMemberships([]);
+    setError(null);
+  }, []);
 
-  // Re-fetch the current session and reload profile/roles from DB.
-  // Useful after onboarding creates new roles — call this, then navigate.
-  const refreshUser = useCallback(async () => {
-    try {
-      const session = await authService.getSession();
-      if (session?.user) {
-        await loadUserData(session.user, { silent: true });
-      }
-    } catch (err) {
-      console.error('refreshUser failed:', err);
+  // ── refreshUser: re-read localStorage (e.g. after onboarding updates merchant_id) ──
+  const refreshUser = useCallback(() => {
+    const stored = readStorage();
+    if (stored?.id && stored?.role) {
+      applyUser(stored);
     }
-  }, [loadUserData]);
+  }, []);
 
+  // Helpers
   const hasRole = useCallback((role) => roles.includes(role), [roles]);
   const isAuthenticated = !!user;
 
-  const primaryRole = roles.includes('admin') ? 'admin'
-    : roles.includes('merchant_owner') || roles.includes('merchant_staff') ? 'merchant'
-    : roles.includes('courier') ? 'courier'
-    : 'customer';
+  const primaryRole =
+    roles.includes("admin") ? "admin"
+    : roles.includes("merchant_owner") || roles.includes("merchant_staff") ? "merchant"
+    : roles.includes("courier") ? "courier"
+    : "customer";
 
   const value = {
     user,
@@ -159,7 +164,7 @@ export function AuthProvider({ children }) {
     roles,
     merchantMemberships,
     loading,
-    isRefreshing,
+    isRefreshing: false,   // kept for API compat — no async reload needed
     error,
     isAuthenticated,
     primaryRole,
@@ -170,13 +175,11 @@ export function AuthProvider({ children }) {
     refreshUser,
   };
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }

@@ -1,7 +1,12 @@
 "use client";
+// ══════════════════════════════════════════════════════════════
+// Login / Identity — Role-picker onboarding screen
+// No passwords. No email. No Supabase Auth.
+// User picks a name + role → inserted into app_users → localStorage.
+// ══════════════════════════════════════════════════════════════
+
 import React, { useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { useNavigate, Link } from "@/lib/router-bridge";
+import { useNavigate } from "@/lib/router-bridge";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,163 +25,67 @@ import {
   Bike,
   ShieldCheck,
   User,
-  ChevronDown,
 } from "lucide-react";
 
-const ROLE_ROUTES = {
-  admin: "/admin",
-  merchant: "/merchant",
-  courier: "/courier",
-  customer: "/",
-};
-
-const DEMO_ACCOUNTS = [
+const ROLES = [
   {
-    role: "customer",
+    id: "customer",
     label: "Müşteri",
-    email: "customer@sestakibris.com",
+    desc: "Sipariş ver, mağazaları keşfet",
     icon: User,
-    color: "bg-purple-50 text-[#6C3BFF] border-purple-200",
+    color: "border-[#6C3BFF] text-[#6C3BFF] bg-purple-50",
+    route: "/",
   },
   {
-    role: "merchant",
-    label: "Mağaza",
-    email: "merchant@sestakibris.com",
+    id: "merchant",
+    label: "Satıcı",
+    desc: "Mağaza aç, ürün ve sipariş yönet",
     icon: Store,
-    color: "bg-blue-50 text-blue-600 border-blue-200",
+    color: "border-blue-500 text-blue-600 bg-blue-50",
+    route: "/merchant",
   },
   {
-    role: "courier",
+    id: "courier",
     label: "Kurye",
-    email: "courier@sestakibris.com",
+    desc: "Siparişleri teslim et, kazan",
     icon: Bike,
-    color: "bg-cyan-50 text-[#00C2A8] border-cyan-200",
+    color: "border-[#00C2A8] text-[#00C2A8] bg-cyan-50",
+    route: "/courier",
   },
   {
-    role: "admin",
+    id: "admin",
     label: "Admin",
-    email: "admin@sestakibris.com",
+    desc: "Sistemi yönet, mağazaları onayla",
     icon: ShieldCheck,
-    color: "bg-orange-50 text-orange-500 border-orange-200",
+    color: "border-orange-400 text-orange-500 bg-orange-50",
+    route: "/admin",
   },
 ];
-
-const DEMO_PASSWORD = "123456";
-
-// Map UI role key → DB role string stored in user_roles
-const DEMO_DB_ROLES = {
-  customer: "customer",
-  merchant: "merchant_owner",
-  courier: "courier",
-  admin: "admin",
-};
 
 export default function Login() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
-  const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [selectedRole, setSelectedRole] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [seedingDemo, setSeedingDemo] = useState(false);
   const [error, setError] = useState("");
-  const [showCredentials, setShowCredentials] = useState(false);
 
-  const doSignIn = async (e, emailOverride, passwordOverride) => {
-    if (e) e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) { setError("İsminizi girin."); return; }
+    if (!selectedRole) { setError("Bir rol seçin."); return; }
+
     setError("");
     setLoading(true);
     try {
-      const user = await signIn(
-        emailOverride ?? email,
-        passwordOverride ?? password,
-      );
-      // If middleware sent ?next=, honor it (e.g. user was going to /merchant/onboarding)
-      if (nextPath) {
-        navigate(nextPath, { replace: true });
-        return;
-      }
-      const { getUserRoles } = await import("@/services/auth.service");
-      let primaryRole = "customer";
-      try {
-        const rolesData = await getUserRoles(user.id);
-        if (rolesData.includes("admin")) primaryRole = "admin";
-        else if (
-          rolesData.includes("merchant_owner") ||
-          rolesData.includes("merchant_staff")
-        )
-          primaryRole = "merchant";
-        else if (rolesData.includes("courier")) primaryRole = "courier";
-      } catch {
-        // fallback to customer
-      }
-      navigate(ROLE_ROUTES[primaryRole] || "/", { replace: true });
+      await signIn({ name: name.trim(), role: selectedRole.id });
+      navigate(selectedRole.route, { replace: true });
     } catch (err) {
       setError(err.message || "Giriş başarısız. Lütfen tekrar deneyin.");
     } finally {
       setLoading(false);
     }
   };
-
-  const handleDemoLogin = async (account) => {
-    setError("");
-    setEmail(account.email);
-    setPassword(DEMO_PASSWORD);
-
-    // Seed demo data (idempotent — safe every time, non-fatal if env missing)
-    setSeedingDemo(true);
-    try {
-      await fetch("/api/seed", { method: "POST" });
-    } catch {
-      // ignore
-    } finally {
-      setSeedingDemo(false);
-    }
-
-    setLoading(true);
-    try {
-      const user = await signIn(account.email, DEMO_PASSWORD);
-      // Supabase auth succeeded — resolve DB role then navigate
-      if (nextPath) {
-        navigate(nextPath, { replace: true });
-        return;
-      }
-      const { getUserRoles } = await import("@/services/auth.service");
-      let primaryRole = account.role;
-      try {
-        const rolesData = await getUserRoles(user.id);
-        if (rolesData.includes("admin")) primaryRole = "admin";
-        else if (
-          rolesData.includes("merchant_owner") ||
-          rolesData.includes("merchant_staff")
-        )
-          primaryRole = "merchant";
-        else if (rolesData.includes("courier")) primaryRole = "courier";
-        else primaryRole = "customer";
-      } catch {
-        // fallback to account.role
-      }
-      navigate(ROLE_ROUTES[primaryRole] || "/", { replace: true });
-    } catch {
-      // Supabase auth failed (wrong key / offline) — write demo session to localStorage
-      const dbRole = DEMO_DB_ROLES[account.role] || "customer";
-      localStorage.setItem(
-        "sesta_demo_session",
-        JSON.stringify({
-          id: `demo-${account.role}`,
-          email: account.email,
-          full_name: account.label,
-          role: dbRole,
-        }),
-      );
-      navigate(ROLE_ROUTES[account.role] || "/", { replace: true });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isSubmitting = loading || seedingDemo;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#F7F7FB] p-4">
@@ -186,135 +95,84 @@ export default function Login() {
             <span className="text-2xl font-extrabold text-white">SK</span>
           </div>
           <CardTitle className="text-2xl font-extrabold text-[#1A1A1A]">
-            Giriş Yap
+            SestaKibris'e Hoş Geldiniz
           </CardTitle>
           <CardDescription className="text-gray-500">
-            SestaKibris hesabınıza giriş yapın
+            Devam etmek için adınızı girin ve rolünüzü seçin
           </CardDescription>
         </CardHeader>
 
         <CardContent>
-          {/* ── Demo accounts ─────────────────────────────── */}
-          <div className="mb-5">
-            <button
-              type="button"
-              onClick={() => setShowCredentials((v) => !v)}
-              className="mb-3 flex w-full items-center justify-center gap-1 text-center text-xs font-semibold uppercase tracking-wide text-gray-400 hover:text-gray-600"
-            >
-              Demo Hesaplar
-              <ChevronDown
-                className={`h-3.5 w-3.5 transition-transform ${showCredentials ? "rotate-180" : ""}`}
-              />
-            </button>
-
-            <div className="grid grid-cols-2 gap-2">
-              {DEMO_ACCOUNTS.map((account) => {
-                const Icon = account.icon;
-                return (
-                  <button
-                    key={account.role}
-                    type="button"
-                    onClick={() => handleDemoLogin(account)}
-                    disabled={isSubmitting}
-                    className={`tap flex flex-col items-start gap-1.5 rounded-xl border p-3 text-left transition-opacity disabled:opacity-60 ${account.color}`}
-                    data-testid={`demo-${account.role}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span className="text-xs font-bold">{account.label}</span>
-                    </div>
-                    {showCredentials && (
-                      <span className="text-[10px] opacity-70">
-                        {account.email}
-                        <br />
-                        Şifre: {DEMO_PASSWORD}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {seedingDemo && (
-              <div className="mt-2 flex items-center justify-center gap-2 text-xs text-gray-400">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Demo hesap hazırlanıyor…
-              </div>
-            )}
-          </div>
-
-          <div className="relative mb-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-3 text-xs text-gray-400">
-                veya e-posta ile giriş yap
-              </span>
-            </div>
-          </div>
-
-          <form onSubmit={doSignIn} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
+
+            {/* Name */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold">
-                E-posta
+              <Label htmlFor="name" className="text-sm font-semibold">
+                Adınız Soyadınız
               </Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="ornek@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="name"
+                type="text"
+                placeholder="Mehmet Yılmaz"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 required
                 className="h-12 rounded-xl"
-                data-testid="login-email"
+                data-testid="login-name"
               />
             </div>
+
+            {/* Role picker */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold">
-                Şifre
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="h-12 rounded-xl"
-                data-testid="login-password"
-              />
+              <Label className="text-sm font-semibold">Rolünüzü Seçin</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {ROLES.map((r) => {
+                  const Icon = r.icon;
+                  const active = selectedRole?.id === r.id;
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setSelectedRole(r)}
+                      data-testid={`role-${r.id}`}
+                      className={`flex flex-col items-start gap-1 rounded-xl border-2 p-3 text-left transition-all ${
+                        active
+                          ? r.color + " shadow-sm"
+                          : "border-[#E5E7EB] bg-white text-gray-600 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="text-sm font-bold">{r.label}</span>
+                      </div>
+                      <span className="text-[10px] leading-tight opacity-70">
+                        {r.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
             <Button
               type="submit"
-              disabled={isSubmitting}
-              className="h-14 w-full rounded-full bg-[#6C3BFF] text-base font-bold text-white hover:bg-[#582CD6]"
+              disabled={loading || !name.trim() || !selectedRole}
+              className="h-14 w-full rounded-full bg-[#6C3BFF] text-base font-bold text-white hover:bg-[#582CD6] disabled:opacity-50"
               data-testid="login-submit"
             >
-              {isSubmitting ? (
+              {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                "Giriş Yap"
+                "Devam Et"
               )}
             </Button>
           </form>
-
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Hesabınız yok mu?{" "}
-            <Link
-              to="/register"
-              className="font-semibold text-[#6C3BFF] hover:underline"
-            >
-              Kayıt Ol
-            </Link>
-          </p>
         </CardContent>
       </Card>
     </div>
