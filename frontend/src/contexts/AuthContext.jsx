@@ -8,15 +8,15 @@ import * as authService from '../services/auth.service';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);       // Supabase auth user
-  const [profile, setProfile] = useState(null);  // profiles table row
-  const [roles, setRoles] = useState([]);        // user_roles rows
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [roles, setRoles] = useState([]);
   const [merchantMemberships, setMerchantMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load user data (profile + roles + memberships)
-  const loadUserData = useCallback(async (authUser) => {
+  const loadUserData = useCallback(async (authUser, { silent = false } = {}) => {
     if (!authUser) {
       setUser(null);
       setProfile(null);
@@ -25,6 +25,7 @@ export function AuthProvider({ children }) {
       return;
     }
 
+    if (silent) setIsRefreshing(true);
     setUser(authUser);
     try {
       const [profileData, rolesData, memberships] = await Promise.all([
@@ -37,6 +38,8 @@ export function AuthProvider({ children }) {
       setMerchantMemberships(memberships);
     } catch (err) {
       console.error('Failed to load user data:', err);
+    } finally {
+      if (silent) setIsRefreshing(false);
     }
   }, []);
 
@@ -103,11 +106,22 @@ export function AuthProvider({ children }) {
     await loadUserData(null);
   }, [loadUserData]);
 
-  // Helpers
+  // Re-fetch the current session and reload profile/roles from DB.
+  // Useful after onboarding creates new roles — call this, then navigate.
+  const refreshUser = useCallback(async () => {
+    try {
+      const session = await authService.getSession();
+      if (session?.user) {
+        await loadUserData(session.user, { silent: true });
+      }
+    } catch (err) {
+      console.error('refreshUser failed:', err);
+    }
+  }, [loadUserData]);
+
   const hasRole = useCallback((role) => roles.includes(role), [roles]);
   const isAuthenticated = !!user;
 
-  // Determine primary role for routing
   const primaryRole = roles.includes('admin') ? 'admin'
     : roles.includes('merchant_owner') || roles.includes('merchant_staff') ? 'merchant'
     : roles.includes('courier') ? 'courier'
@@ -119,6 +133,7 @@ export function AuthProvider({ children }) {
     roles,
     merchantMemberships,
     loading,
+    isRefreshing,
     error,
     isAuthenticated,
     primaryRole,
@@ -126,6 +141,7 @@ export function AuthProvider({ children }) {
     signIn,
     signUp,
     signOut,
+    refreshUser,
   };
 
   return (

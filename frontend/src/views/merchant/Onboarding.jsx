@@ -38,7 +38,7 @@ const STEPS = [
 
 export default function MerchantOnboarding() {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshUser } = useAuth();
   const [step, setStep] = useState(0);
   const [data, setData] = useState({
     name: "",
@@ -73,9 +73,10 @@ export default function MerchantOnboarding() {
         delivery_mode: data.deliveryMode,
         owner_user_id: user.id,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Başvurunuz alındı! Admin onayı bekleniyor.");
-      navigate("/merchant");
+      await refreshUser();
+      navigate("/merchant", { replace: true });
     },
     onError: (e) => toast.error(`Başvuru hatası: ${e.message}`),
   });

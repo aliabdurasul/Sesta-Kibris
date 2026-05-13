@@ -34,7 +34,7 @@ const STEPS = [
 
 export default function CourierOnboarding() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [step, setStep] = useState(0);
   const [otpSent, setOtpSent] = useState(false);
   const [otpInput, setOtpInput] = useState("");
@@ -71,9 +71,10 @@ export default function CourierOnboarding() {
         user_id: user.id,
         vehicle_type: data.vehicle,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Başvurunuz alındı! Onay bekleniyor.");
-      navigate("/courier");
+      await refreshUser();
+      navigate("/courier", { replace: true });
     },
     onError: (e) => toast.error(`Başvuru hatası: ${e.message}`),
   });

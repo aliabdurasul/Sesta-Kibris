@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useNavigate, Link } from "@/lib/router-bridge";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,8 @@ const DEMO_PASSWORD = "123456";
 export default function Login() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -81,6 +84,11 @@ export default function Login() {
         emailOverride ?? email,
         passwordOverride ?? password,
       );
+      // If middleware sent ?next=, honor it (e.g. user was going to /merchant/onboarding)
+      if (nextPath) {
+        navigate(nextPath, { replace: true });
+        return;
+      }
       const { getUserRoles } = await import("@/services/auth.service");
       let primaryRole = "customer";
       try {
