@@ -1,7 +1,7 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "@/lib/router-bridge";
-import { useMarketplace } from "@/store/GapGelContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,29 +15,30 @@ import {
 import {
   MapPin,
   Phone,
-  RotateCcw,
   Plus,
   Star,
   Trash2,
   Pencil,
+  LogOut,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
+
+function addrKey(userId) {
+  return `sesta_addresses_${userId}`;
+}
+
+function newId() {
+  return Math.random().toString(36).slice(2, 10);
+}
 
 export default function CustomerProfile() {
   const navigate = useNavigate();
-  const {
-    state,
-    findCustomer,
-    resetDemo,
-    addAddress,
-    removeAddress,
-    setDefaultAddress,
-    updateAddress,
-  } = useMarketplace();
-  const user = findCustomer(state.currentCustomerId);
-  const addresses = user?.addresses || [];
+  const { user, profile, loading, signOut } = useAuth();
 
+  const [addresses, setAddresses] = useState([]);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // address obj or null
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({
     label: "",
     line: "",
@@ -46,11 +47,42 @@ export default function CustomerProfile() {
     isDefault: false,
   });
 
+  // Load addresses from localStorage once user is known
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const raw = localStorage.getItem(addrKey(user.id));
+      if (raw) setAddresses(JSON.parse(raw));
+    } catch {
+      // ignore parse errors
+    }
+  }, [user?.id]);
+
+  const persist = (next) => {
+    setAddresses(next);
+    try {
+      localStorage.setItem(addrKey(user.id), JSON.stringify(next));
+    } catch {}
+  };
+
+  const addAddress = (addr) =>
+    persist([...addresses, { ...addr, id: newId(), isDefault: addresses.length === 0 }]);
+
+  const updateAddress = (id, patch) =>
+    persist(addresses.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+
+  const removeAddress = (id) =>
+    persist(addresses.filter((a) => a.id !== id));
+
+  const setDefaultAddress = (id) =>
+    persist(addresses.map((a) => ({ ...a, isDefault: a.id === id })));
+
   const openNew = () => {
     setEditing(null);
     setForm({ label: "", line: "", district: "", notes: "", isDefault: false });
     setOpen(true);
   };
+
   const openEdit = (a) => {
     setEditing(a);
     setForm({
@@ -62,38 +94,59 @@ export default function CustomerProfile() {
     });
     setOpen(true);
   };
+
   const submit = () => {
-    if (!form.label.trim() || !form.line.trim()) return;
+    if (!form.label.trim() || !form.line.trim()) {
+      toast.error("Etiket ve adres alanları zorunludur.");
+      return;
+    }
     if (editing) {
-      updateAddress(user.id, editing.id, form);
-      if (form.isDefault && !editing.isDefault) {
-        setDefaultAddress(user.id, editing.id);
-      }
+      updateAddress(editing.id, form);
+      if (form.isDefault) setDefaultAddress(editing.id);
     } else {
-      addAddress(user.id, form);
+      addAddress(form);
     }
     setOpen(false);
+    toast.success(editing ? "Adres güncellendi" : "Adres eklendi");
   };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#6C3BFF]" />
+      </div>
+    );
+  }
+
+  const displayName = profile?.full_name || user?.email || "Kullanıcı";
+  const displayEmail = user?.email || "";
 
   return (
     <div className="gg-rise px-4 pb-24 pt-4" data-testid="customer-profile">
       <h1 className="mb-4 text-2xl font-extrabold">Profil</h1>
+
+      {/* User card */}
       <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="grid h-14 w-14 place-items-center rounded-full bg-[#6C3BFF] text-xl font-bold text-white">
-            {user.name[0]}
+            {displayName.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <div className="text-base font-bold">{user.name}</div>
-            <div className="text-xs text-gray-500">Demo hesap</div>
-          </div>
-        </div>
-        <div className="mt-4 space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-gray-600">
-            <Phone className="h-4 w-4" />
-            {user.phone}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-base font-bold">{displayName}</div>
+            <div className="truncate text-xs text-gray-500">{displayEmail}</div>
           </div>
         </div>
+        {profile?.phone && (
+          <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
+            <Phone className="h-4 w-4 shrink-0" />
+            {profile.phone}
+          </div>
+        )}
       </div>
 
       {/* Address Book */}
@@ -116,6 +169,7 @@ export default function CustomerProfile() {
             <Plus className="mr-1 h-3.5 w-3.5" /> Yeni adres
           </Button>
         </div>
+
         <div className="space-y-2">
           {addresses.length === 0 && (
             <div className="rounded-xl border border-dashed border-gray-200 p-4 text-center text-xs text-gray-500">
@@ -156,7 +210,7 @@ export default function CustomerProfile() {
               <div className="mt-2 flex gap-1.5">
                 {!a.isDefault && (
                   <Button
-                    onClick={() => setDefaultAddress(user.id, a.id)}
+                    onClick={() => setDefaultAddress(a.id)}
                     variant="outline"
                     className="h-7 rounded-full border-[#6C3BFF]/30 px-3 text-[11px] font-bold text-[#6C3BFF]"
                     data-testid={`address-set-default-${a.id}`}
@@ -174,7 +228,7 @@ export default function CustomerProfile() {
                 </Button>
                 {addresses.length > 1 && (
                   <Button
-                    onClick={() => removeAddress(user.id, a.id)}
+                    onClick={() => removeAddress(a.id)}
                     variant="outline"
                     className="h-7 rounded-full border-red-200 px-3 text-[11px] font-bold text-red-600 hover:bg-red-50"
                     data-testid={`address-delete-${a.id}`}
@@ -186,11 +240,6 @@ export default function CustomerProfile() {
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="mt-4 rounded-2xl border border-dashed border-[#6C3BFF]/30 bg-white p-4 text-xs text-gray-500">
-        Demo verisi tarayıcınızda saklanır — sayfa yenilense bile siparişler
-        kalır. Üst çubuktaki rol seçiciden istediğiniz role geçebilirsiniz.
       </div>
 
       {/* Onboarding CTAs */}
@@ -213,21 +262,19 @@ export default function CustomerProfile() {
         </Button>
       </div>
 
+      {/* Sign out */}
       <Button
-        onClick={resetDemo}
+        onClick={handleSignOut}
         variant="outline"
         className="tap mt-3 h-12 w-full rounded-full border-red-200 font-bold text-red-600 hover:bg-red-50"
-        data-testid="reset-demo-button"
+        data-testid="sign-out-button"
       >
-        <RotateCcw className="mr-2 h-4 w-4" /> Demoyu sıfırla
+        <LogOut className="mr-2 h-4 w-4" /> Çıkış yap
       </Button>
 
       {/* Address dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
-          className="rounded-2xl"
-          data-testid="address-dialog"
-        >
+        <DialogContent className="rounded-2xl" data-testid="address-dialog">
           <DialogHeader>
             <DialogTitle>
               {editing ? "Adresi düzenle" : "Yeni adres"}
@@ -264,7 +311,9 @@ export default function CustomerProfile() {
               </label>
               <Input
                 value={form.district}
-                onChange={(e) => setForm({ ...form, district: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, district: e.target.value })
+                }
                 placeholder="Lefkoşa Merkez"
                 className="h-10 rounded-xl"
                 data-testid="address-input-district"

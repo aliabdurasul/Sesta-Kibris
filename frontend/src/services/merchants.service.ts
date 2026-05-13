@@ -32,7 +32,7 @@ export async function getActiveMerchants() {
   return data as Merchant[];
 }
 
-/** Fetch a single merchant by slug. */
+/** Fetch a single merchant by slug. Returns null when not found. */
 export async function getMerchantBySlug(slug: string) {
   const supabase = getClient();
   const { data, error } = await supabase
@@ -40,21 +40,22 @@ export async function getMerchantBySlug(slug: string) {
     .select('*')
     .eq('slug', slug)
     .eq('is_active', true)
-    .single();
+    .maybeSingle();
   if (error) throw new MerchantError(error.message);
-  return data as Merchant;
+  return data as Merchant | null;
 }
 
-/** Fetch a single merchant by ID. */
+/** Fetch a single merchant by ID. Returns null when not found (no throw). */
 export async function getMerchantById(id: string) {
   const supabase = getClient();
   const { data, error } = await supabase
     .from('merchants')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle();
+  // PGRST116 (no rows) is handled by maybeSingle returning null — not an error.
   if (error) throw new MerchantError(error.message);
-  return data as Merchant;
+  return data as Merchant | null;
 }
 
 /** Fetch products for a merchant. */

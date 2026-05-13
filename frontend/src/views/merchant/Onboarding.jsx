@@ -1,8 +1,11 @@
 "use client";
 import React, { useState } from "react";
 import { useNavigate } from "@/lib/router-bridge";
-import { useMarketplace } from "@/store/GapGelContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMutation } from "@tanstack/react-query";
+import * as merchantsService from "@/services/merchants.service";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -35,7 +38,7 @@ const STEPS = [
 
 export default function MerchantOnboarding() {
   const navigate = useNavigate();
-  const { submitMerchantApplication } = useMarketplace();
+  const { user, profile } = useAuth();
   const [step, setStep] = useState(0);
   const [data, setData] = useState({
     name: "",
@@ -44,6 +47,7 @@ export default function MerchantOnboarding() {
     deliveryMode: "platform_only",
     deliveryWindow: "20–35 dk",
     address: "",
+    phone: "",
     docs: { taxNumber: "", license: "" },
   });
 
@@ -58,9 +62,30 @@ export default function MerchantOnboarding() {
     return true;
   };
 
+  const applyMutation = useMutation({
+    mutationFn: () =>
+      merchantsService.createMerchant({
+        name: data.name.trim(),
+        type: data.type,
+        phone: data.phone.trim() || profile?.phone || "",
+        address: data.address.trim(),
+        description: data.tagline.trim() || undefined,
+        delivery_mode: data.deliveryMode,
+        owner_user_id: user.id,
+      }),
+    onSuccess: () => {
+      toast.success("Başvurunuz alındı! Admin onayı bekleniyor.");
+      navigate("/merchant");
+    },
+    onError: (e) => toast.error(`Başvuru hatası: ${e.message}`),
+  });
+
   const submit = () => {
-    submitMerchantApplication(data);
-    navigate("/merchant");
+    if (!user?.id) {
+      toast.error("Giriş yapmanız gerekiyor.");
+      return;
+    }
+    applyMutation.mutate();
   };
 
   return (
@@ -200,7 +225,7 @@ export default function MerchantOnboarding() {
 
         {step === 3 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-bold">Adres</h2>
+            <h2 className="text-lg font-bold">Adres &amp; İletişim</h2>
             <Field label="İşletme adresi *">
               <Textarea
                 value={data.address}
@@ -208,6 +233,14 @@ export default function MerchantOnboarding() {
                 placeholder="Atatürk Caddesi 12, Lefkoşa"
                 className="min-h-[80px]"
                 data-testid="onboarding-address"
+              />
+            </Field>
+            <Field label="Telefon numarası">
+              <Input
+                value={data.phone}
+                onChange={(e) => set({ phone: e.target.value })}
+                placeholder="+90 392 555 0000"
+                data-testid="onboarding-phone"
               />
             </Field>
           </div>
@@ -277,10 +310,13 @@ export default function MerchantOnboarding() {
           ) : (
             <Button
               onClick={submit}
+              disabled={applyMutation.isPending}
               className="rounded-full bg-[#00C2A8] hover:bg-[#00A38D]"
               data-testid="onboarding-submit"
             >
-              Başvuruyu gönder <CheckCircle2 className="ml-1 h-4 w-4" />
+              {applyMutation.isPending ? "Gönderiliyor…" : (
+                <>Başvuruyu gönder <CheckCircle2 className="ml-1 h-4 w-4" /></>
+              )}
             </Button>
           )}
         </div>

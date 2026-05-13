@@ -1,8 +1,11 @@
 "use client";
 import React, { useState } from "react";
 import { useNavigate } from "@/lib/router-bridge";
-import { useMarketplace } from "@/store/GapGelContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMutation } from "@tanstack/react-query";
+import * as couriersService from "@/services/couriers.service";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -31,7 +34,7 @@ const STEPS = [
 
 export default function CourierOnboarding() {
   const navigate = useNavigate();
-  const { submitCourierApplication } = useMarketplace();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [otpSent, setOtpSent] = useState(false);
   const [otpInput, setOtpInput] = useState("");
@@ -62,9 +65,25 @@ export default function CourierOnboarding() {
     return true;
   };
 
+  const applyMutation = useMutation({
+    mutationFn: () =>
+      couriersService.submitCourierApplication({
+        user_id: user.id,
+        vehicle_type: data.vehicle,
+      }),
+    onSuccess: () => {
+      toast.success("Başvurunuz alındı! Onay bekleniyor.");
+      navigate("/courier");
+    },
+    onError: (e) => toast.error(`Başvuru hatası: ${e.message}`),
+  });
+
   const submit = () => {
-    submitCourierApplication(data);
-    navigate("/courier");
+    if (!user?.id) {
+      toast.error("Giriş yapmanız gerekiyor.");
+      return;
+    }
+    applyMutation.mutate();
   };
 
   return (
@@ -280,10 +299,13 @@ export default function CourierOnboarding() {
           ) : (
             <Button
               onClick={submit}
+              disabled={applyMutation.isPending}
               className="rounded-full bg-[#00C2A8] hover:bg-[#00A38D]"
               data-testid="courier-onboarding-submit"
             >
-              Başvuruyu gönder <CheckCircle2 className="ml-1 h-4 w-4" />
+              {applyMutation.isPending ? "Gönderiliyor…" : (
+                <>Başvuruyu gönder <CheckCircle2 className="ml-1 h-4 w-4" /></>
+              )}
             </Button>
           )}
         </div>

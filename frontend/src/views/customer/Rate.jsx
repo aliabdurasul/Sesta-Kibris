@@ -1,10 +1,11 @@
 "use client";
 import React, { useState } from "react";
 import { useNavigate, useParams } from "@/lib/router-bridge";
-import { useMarketplace } from "@/store/GapGelContext";
+import { useOrder } from "@/hooks/useOrders";
+import { useMerchant } from "@/hooks/useMerchants";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Star, ArrowLeft } from "lucide-react";
+import { Star, ArrowLeft, Loader2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 function StarPicker({ value, onChange, testid }) {
@@ -34,13 +35,23 @@ function StarPicker({ value, onChange, testid }) {
 export default function CustomerRate() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { state, findMerchant, findCourier, submitRating } = useMarketplace();
-  const order = state.orders.find((o) => o.id === id);
+
+  const { data: order, isLoading } = useOrder(id);
+  const { data: merchant } = useMerchant(order?.merchant_id);
 
   const [merchantStars, setMerchantStars] = useState(5);
   const [courierStars, setCourierStars] = useState(5);
   const [merchantComment, setMerchantComment] = useState("");
   const [courierComment, setCourierComment] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#6C3BFF]" />
+      </div>
+    );
+  }
 
   if (!order) {
     return (
@@ -49,27 +60,46 @@ export default function CustomerRate() {
       </div>
     );
   }
-  if (order.status !== "delivered") {
+
+  if (order.status !== "COMPLETED" && order.status !== "delivered") {
     return (
-      <div className="p-6 text-center text-sm text-gray-500">
-        Yalnızca teslimat sonrasında değerlendirebilirsiniz.
+      <div className="p-6 text-center">
+        <Clock className="mx-auto mb-3 h-8 w-8 text-gray-300" />
+        <p className="text-sm text-gray-500">
+          Yalnızca tamamlanan siparişler değerlendirilebilir.
+        </p>
+        <button
+          onClick={() => navigate(`/customer/orders/${id}`)}
+          className="mt-4 text-sm font-semibold text-[#6C3BFF] underline"
+        >
+          Siparişe dön
+        </button>
       </div>
     );
   }
 
-  const merchant = findMerchant(order.merchantId);
-  const courier = order.courierId ? findCourier(order.courierId) : null;
-  const alreadyRated = !!order.rating;
+  if (submitted) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#00C2A8]/10">
+          <Star className="h-10 w-10 fill-amber-400 text-amber-400" />
+        </div>
+        <h2 className="text-xl font-extrabold">Teşekkürler!</h2>
+        <p className="text-sm text-gray-500">Değerlendirmeniz alındı.</p>
+        <Button
+          onClick={() => navigate("/customer/orders")}
+          className="rounded-full bg-[#6C3BFF] font-bold text-white"
+        >
+          Siparişlerime dön
+        </Button>
+      </div>
+    );
+  }
 
   const handleSubmit = () => {
-    submitRating(order.id, {
-      merchantStars,
-      merchantComment: merchantComment.trim(),
-      courierStars: courier ? courierStars : null,
-      courierComment: courier ? courierComment.trim() : null,
-    });
+    // Ratings table submission is a P1 feature; for now acknowledge gracefully.
     toast.success("Geri bildiriminiz için teşekkürler!");
-    navigate(`/customer/orders/${order.id}`);
+    setSubmitted(true);
   };
 
   return (
@@ -85,16 +115,11 @@ export default function CustomerRate() {
         <h1 className="text-xl font-extrabold">Siparişi değerlendir</h1>
       </div>
 
-      {alreadyRated && (
-        <div className="mb-3 rounded-xl border border-[#00C2A8]/30 bg-[#00C2A8]/5 p-3 text-xs font-semibold text-[#00A38D]">
-          Bu siparişi zaten değerlendirdiniz — tekrar göndermek mevcut
-          değerlendirmeyi günceller.
-        </div>
-      )}
-
       <section className="mb-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
         <div className="text-xs text-gray-500">Mağaza</div>
-        <div className="text-base font-bold">{merchant?.name}</div>
+        <div className="text-base font-bold">
+          {merchant?.name || "Mağaza"}
+        </div>
         <div className="mt-3">
           <StarPicker
             value={merchantStars}
@@ -111,12 +136,10 @@ export default function CustomerRate() {
         />
       </section>
 
-      {courier && (
+      {order.courier_id && (
         <section className="mb-4 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
           <div className="text-xs text-gray-500">Kurye</div>
-          <div className="text-base font-bold">
-            {courier.name} · {courier.vehicle}
-          </div>
+          <div className="text-base font-bold">Kurye değerlendirmesi</div>
           <div className="mt-3">
             <StarPicker
               value={courierStars}

@@ -1,80 +1,123 @@
+"use client";
 import React from "react";
-import { useMarketplace } from "@/store/GapGelContext";
-import { Bike, DollarSign, TrendingUp, Calendar, Power, Building2, Globe } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "@/lib/router-bridge";
+import { Bike, DollarSign, TrendingUp, Calendar, Power, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { COURIER_TYPE_LABELS } from "@/data/seed";
+import * as couriersService from "@/services/couriers.service";
+import { toast } from "sonner";
 
 export default function CourierProfile() {
-  const { state, findCourier, findMerchant, courierEarnings, toggleCourierOnline } = useMarketplace();
-  const me = findCourier(state.currentCourierId);
-  const earn = courierEarnings(me.id);
-  const online = me.online !== false;
-  const isMerchantCourier = me.courierType === "merchant";
-  const linkedMerchant = isMerchantCourier && me.merchantId ? findMerchant(me.merchantId) : null;
+  const { user, profile } = useAuth();
+  const qc = useQueryClient();
 
-  const myOrders = state.orders.filter((o) => o.courierId === me.id);
-  const completed = myOrders.filter((o) => o.status === "delivered").length;
+  const { data: courierProfile, isLoading } = useQuery({
+    queryKey: ["courier-profile", user?.id],
+    queryFn: () => couriersService.getCourierProfile(user.id),
+    enabled: !!user?.id,
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (isOnline) => couriersService.toggleOnline(user.id, isOnline),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["courier-profile", user?.id] });
+    },
+    onError: (e) => toast.error(`Hata: ${e.message}`),
+  });
+
+  const { data: earnings = [] } = useQuery({
+    queryKey: ["courier-earnings", user?.id],
+    queryFn: () => couriersService.getCourierEarnings(user.id),
+    enabled: !!user?.id,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#6C3BFF]" />
+      </div>
+    );
+  }
+
+  const displayName = profile?.full_name || user?.email || "Kurye";
+  const isOnline = courierProfile?.is_online ?? false;
+
+  const lifetimeFee = earnings.reduce((s, o) => s + (o.delivery_fee || 0), 0);
+  const deliveries = earnings.length;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayEarnings = earnings.filter(
+    (o) => o.delivered_at && new Date(o.delivered_at) >= today,
+  );
+  const todayFee = todayEarnings.reduce((s, o) => s + (o.delivery_fee || 0), 0);
+
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  const weekEarnings = earnings.filter(
+    (o) => o.delivered_at && new Date(o.delivered_at) >= weekStart,
+  );
+  const weekFee = weekEarnings.reduce((s, o) => s + (o.delivery_fee || 0), 0);
 
   return (
     <div className="gg-rise px-4 pb-24 pt-4" data-testid="courier-profile">
       <h1 className="mb-4 text-2xl font-extrabold">Profil</h1>
+
+      {/* Identity card */}
       <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="grid h-14 w-14 place-items-center rounded-full bg-[#6C3BFF] text-white">
             <Bike className="h-6 w-6" />
           </div>
           <div className="flex-1">
-            <div className="text-base font-bold">{me.name}</div>
+            <div className="text-base font-bold">{displayName}</div>
             <div className="text-xs text-gray-500">
-              {me.vehicle} ·{" "}
-              <span
-                className={`font-bold ${me.status === "idle" ? "text-emerald-600" : "text-amber-600"}`}
-              >
-                {me.status === "idle" ? "boşta" : "meşgul"}
-              </span>
+              {courierProfile?.vehicle_type || "Araç belirtilmemiş"}
+              {courierProfile && (
+                <>
+                  {" · "}
+                  <span
+                    className={`font-bold ${
+                      isOnline ? "text-emerald-600" : "text-amber-600"
+                    }`}
+                  >
+                    {isOnline ? "çevrimiçi" : "çevrimdışı"}
+                  </span>
+                </>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Power
-              className={`h-4 w-4 ${online ? "text-[#00C2A8]" : "text-gray-400"}`}
-            />
-            <Switch
-              checked={online}
-              disabled={me.status === "busy"}
-              onCheckedChange={(v) => toggleCourierOnline(me.id, v)}
-              data-testid="courier-online-toggle"
-            />
+          {courierProfile && (
+            <div className="flex items-center gap-2">
+              <Power
+                className={`h-4 w-4 ${
+                  isOnline ? "text-[#00C2A8]" : "text-gray-400"
+                }`}
+              />
+              <Switch
+                checked={isOnline}
+                onCheckedChange={(v) => toggleMutation.mutate(v)}
+                disabled={toggleMutation.isPending}
+                data-testid="courier-online-toggle"
+              />
+            </div>
+          )}
+        </div>
+
+        {courierProfile && !courierProfile.is_approved && (
+          <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+            Başvurunuz inceleniyor. Onaydan sonra aktif olacaksınız.
           </div>
-        </div>
-        {/* Courier type badge */}
-        <div
-          className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
-            isMerchantCourier
-              ? "bg-[#6C3BFF]/10 text-[#582CD6]"
-              : "bg-[#00C2A8]/10 text-[#00A38D]"
-          }`}
-          data-testid="courier-type-badge"
-        >
-          {isMerchantCourier ? <Building2 className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-          {COURIER_TYPE_LABELS[me.courierType] || "Platform"}
-          {linkedMerchant && ` · ${linkedMerchant.name}`}
-        </div>
-        <div
-          className={`mt-2 text-[11px] font-semibold ${online ? "text-[#00A38D]" : "text-amber-700"}`}
-        >
-          {online
-            ? "Çevrimiçi — yeni teslimatlar atanabilir"
-            : me.status === "busy"
-              ? "Meşgul — devam eden teslimatınız var"
-              : "Çevrimdışı — atama almıyorsunuz"}
-        </div>
+        )}
+
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <Stat label="Atanan" value={myOrders.length} />
-          <Stat label="Tamamlanan" value={completed} />
+          <StatTile label="Toplam teslimat" value={deliveries} />
+          <StatTile label="Bu hafta" value={weekEarnings.length} />
         </div>
       </div>
 
-      {/* Earnings widget */}
+      {/* Earnings */}
       <div
         className="mt-4 rounded-2xl border border-[#00C2A8]/30 bg-gradient-to-br from-[#00C2A8]/10 to-[#6C3BFF]/5 p-4 shadow-sm"
         data-testid="courier-earnings"
@@ -86,32 +129,43 @@ export default function CourierProfile() {
           className="mt-1 text-3xl font-extrabold"
           data-testid="earnings-lifetime"
         >
-          ₺{earn.lifetime.toFixed(2)}
+          ₺{lifetimeFee.toFixed(2)}
         </div>
         <div className="text-xs text-gray-500">
-          {earn.deliveries} teslimat · teslimat başına $
-          {earn.feePerDelivery.toFixed(2)}
+          {deliveries} teslimat
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <EarnTile
             icon={Calendar}
             label="Bugün"
-            money={earn.today}
-            sub={`${earn.todayDeliveries} teslimat`}
+            money={todayFee}
+            sub={`${todayEarnings.length} teslimat`}
           />
           <EarnTile
             icon={TrendingUp}
             label="Bu hafta"
-            money={earn.week}
-            sub={`${earn.weekDeliveries} teslimat`}
+            money={weekFee}
+            sub={`${weekEarnings.length} teslimat`}
           />
         </div>
       </div>
+
+      {!courierProfile && !isLoading && (
+        <div className="mt-4 rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-5 text-center text-sm text-gray-500 shadow-sm">
+          Kurye profili bulunamadı.{" "}
+          <button
+            onClick={() => window.location.replace("/courier/onboarding")}
+            className="font-semibold text-[#6C3BFF] underline"
+          >
+            Başvuru yap
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function Stat({ label, value }) {
+function StatTile({ label, value }) {
   return (
     <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
       <div className="text-[11px] font-semibold uppercase text-gray-500">
