@@ -1,12 +1,12 @@
 "use client";
 import React from "react";
-import { useParams, useNavigate } from "@/lib/router-bridge";
+import { useRouter, useParams } from "next/navigation";
 import { CheckCircle2, Map, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function OrderSuccess() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   return (
     <div className="gg-rise flex min-h-[calc(100vh-100px)] flex-col items-center justify-center px-6 text-center" data-testid="order-success">
@@ -25,14 +25,14 @@ export default function OrderSuccess() {
 
       <div className="w-full max-w-sm space-y-3">
         <Button
-          onClick={() => navigate(`/order-track/${id}`)}
+          onClick={() => router.push(`/order-track/${id}`)}
           className="tap h-14 w-full rounded-full bg-[#6C3BFF] text-base font-bold shadow-lg hover:bg-[#582CD6]"
         >
           <Map className="mr-2 h-5 w-5" />
           Siparişimi Takip Et
         </Button>
         <Button
-          onClick={() => navigate("/")}
+          onClick={() => router.push("/")}
           variant="outline"
           className="tap h-14 w-full rounded-full border-[#E5E7EB] text-base font-bold text-gray-600 hover:bg-gray-50"
         >

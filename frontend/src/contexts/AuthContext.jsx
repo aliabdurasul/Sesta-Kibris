@@ -110,10 +110,6 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("sesta_user");
-      localStorage.removeItem("sesta_demo_session");
-    }
     try {
       await authService.signOut();
     } catch {

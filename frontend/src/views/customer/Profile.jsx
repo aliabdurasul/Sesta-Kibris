@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "@/lib/router-bridge";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ function newId() {
 }
 
 export default function CustomerProfile() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user, profile, loading, signOut } = useAuth();
 
   const [addresses, setAddresses] = useState([]);
@@ -112,7 +112,7 @@ export default function CustomerProfile() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/login");
+    router.push("/login");
   };
 
   if (loading) {
@@ -245,7 +245,7 @@ export default function CustomerProfile() {
       {/* Onboarding CTAs */}
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Button
-          onClick={() => navigate("/merchant/onboarding")}
+          onClick={() => router.push("/merchant/onboarding")}
           variant="outline"
           className="tap h-12 rounded-2xl border-[#6C3BFF]/30 font-bold text-[#6C3BFF] hover:bg-[#6C3BFF]/5"
           data-testid="apply-merchant-button"
@@ -253,7 +253,7 @@ export default function CustomerProfile() {
           Mağaza ol
         </Button>
         <Button
-          onClick={() => navigate("/courier/onboarding")}
+          onClick={() => router.push("/courier/onboarding")}
           variant="outline"
           className="tap h-12 rounded-2xl border-[#00C2A8]/30 font-bold text-[#00A38D] hover:bg-[#00C2A8]/5"
           data-testid="apply-courier-button"

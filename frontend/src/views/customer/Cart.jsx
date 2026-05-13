@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useNavigate } from "@/lib/router-bridge";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Tag, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { DEFAULT_DELIVERY_FEE, formatPrice } from "@/lib/constants";
 const PROMO_CODES = { SESTA10: { type: "percent", value: 10 } };
 
 export default function CustomerCart() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { cart, addItem, decrementItem, removeItem, subtotal } = useCart();
   
   const { data: merchant } = useMerchant(cart.merchant_id);
@@ -37,14 +37,14 @@ export default function CustomerCart() {
       total: String(total),
       ...(promo?.code ? { promoCode: promo.code } : {}),
     });
-    navigate(`/checkout?${params.toString()}`);
+    router.push(`/checkout?${params.toString()}`);
   };
 
   if (cart.items.length === 0) {
     return (
       <div className="gg-rise px-4 pb-24 pt-4" data-testid="customer-cart-empty">
         <div className="mb-4 flex items-center gap-2">
-          <button onClick={() => navigate(-1)} className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm" data-testid="back-button">
+          <button onClick={() => router.back()} className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm" data-testid="back-button">
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="text-xl font-extrabold">Sepetim</h1>
@@ -55,7 +55,7 @@ export default function CustomerCart() {
           </div>
           <h2 className="mt-4 text-lg font-bold">Sepetiniz boş</h2>
           <p className="mt-1 text-sm text-gray-500">Başlamak için bir mağazadan ürün ekleyin.</p>
-          <Button onClick={() => navigate("/markets")} className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]" data-testid="empty-cart-browse-button">
+          <Button onClick={() => router.push("/markets")} className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]" data-testid="empty-cart-browse-button">
             Mağazalara göz at
           </Button>
         </div>
@@ -66,7 +66,7 @@ export default function CustomerCart() {
   return (
     <div className="gg-rise px-4 pb-40 pt-4" data-testid="customer-cart">
       <div className="mb-4 flex items-center gap-2">
-        <button onClick={() => navigate(-1)} className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm">
+        <button onClick={() => router.back()} className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="text-xl font-extrabold">Sepetim</h1>

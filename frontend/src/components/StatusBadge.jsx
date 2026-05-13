@@ -1,5 +1,5 @@
 import React from "react";
-import { getStateLabel, normalizeStatus } from "@/lib/orderMachine";
+import { getStateLabel, normalizeStatus } from "@/lib/order-status";
 
 const STYLES = {
   created: "bg-gray-100 text-gray-700",

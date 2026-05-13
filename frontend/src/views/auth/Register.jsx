@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
-import { useNavigate, Link } from '@/lib/router-bridge';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 
 export default function Register() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { signUp } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -45,7 +46,7 @@ export default function Register() {
               E-posta adresinize doğrulama linki gönderildi. Lütfen e-postanızı kontrol edin.
             </p>
             <Button
-              onClick={() => navigate('/login')}
+              onClick={() => router.push('/login')}
               className="w-full h-14 rounded-full bg-[#6C3BFF] hover:bg-[#582CD6] text-white font-bold"
             >
               Giriş Sayfasına Dön
@@ -111,7 +112,7 @@ export default function Register() {
           </form>
           <p className="text-center text-sm text-gray-500 mt-6">
             Zaten hesabınız var mı?{' '}
-            <Link to="/login" className="text-[#6C3BFF] font-semibold hover:underline">
+            <Link href="/login" className="text-[#6C3BFF] font-semibold hover:underline">
               Giriş Yap
             </Link>
           </p>

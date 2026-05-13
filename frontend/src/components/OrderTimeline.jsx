@@ -1,5 +1,5 @@
 import React from "react";
-import { ORDER_STATES, STATE_LABELS, normalizeStatus, stateIndex } from "@/lib/orderMachine";
+import { ORDER_STATES, STATE_LABELS, normalizeStatus, stateIndex } from "@/lib/order-status";
 import { Check } from "lucide-react";
 
 export default function OrderTimeline({ status, cancelReason }) {

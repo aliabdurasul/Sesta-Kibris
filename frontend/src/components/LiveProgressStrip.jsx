@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ORDER_STATES, getStateLabel, normalizeStatus, stateIndex } from "@/lib/orderMachine";
+import { ORDER_STATES, getStateLabel, normalizeStatus, stateIndex } from "@/lib/order-status";
 import { calculateEta } from "@/lib/eta";
 import { CheckCircle2, ShoppingBag, ChefHat, Package, Bike, Home, CreditCard, Clock } from "lucide-react";
 

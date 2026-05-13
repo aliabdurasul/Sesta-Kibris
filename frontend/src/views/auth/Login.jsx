@@ -4,8 +4,8 @@
 // ══════════════════════════════════════════════════════════════
 
 import React, { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { useNavigate, Link } from "@/lib/router-bridge";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,9 +20,9 @@ import {
 import { AlertCircle, Loader2 } from "lucide-react";
 
 function LoginForm() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn } = useAuth();
+  const { signIn, primaryRole } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,11 +35,19 @@ function LoginForm() {
     try {
       await signIn(email.trim(), password);
       const next = searchParams.get("next");
-      const dest =
-        next && next.startsWith("/") && !next.startsWith("//")
-          ? next
-          : "/";
-      navigate(dest, { replace: true });
+      if (next && next.startsWith("/") && !next.startsWith("//")) {
+        router.replace(next);
+      } else {
+        // Role-based redirect: middleware will have set ?next for protected routes,
+        // but for direct /login visits, route to the user's primary dashboard.
+        const roleRedirects = {
+          admin: "/admin",
+          merchant: "/merchant",
+          courier: "/courier",
+          customer: "/",
+        };
+        router.replace(roleRedirects[primaryRole] || "/");
+      }
     } catch (err) {
       setError(err.message || "Giriş başarısız. Lütfen tekrar deneyin.");
     } finally {
@@ -121,7 +129,7 @@ function LoginForm() {
             <p className="text-center text-sm text-gray-500">
               Hesabınız yok mu?{" "}
               <Link
-                to="/register"
+                href="/register"
                 className="font-semibold text-[#6C3BFF] hover:underline"
               >
                 Kayıt ol

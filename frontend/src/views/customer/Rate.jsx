@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useNavigate, useParams } from "@/lib/router-bridge";
+import { useRouter, useParams } from "next/navigation";
 import { useOrder } from "@/hooks/useOrders";
 import { useMerchant } from "@/hooks/useMerchants";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ function StarPicker({ value, onChange, testid }) {
 
 export default function CustomerRate() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const { data: order, isLoading } = useOrder(id);
   const { data: merchant } = useMerchant(order?.merchant_id);
@@ -69,7 +69,7 @@ export default function CustomerRate() {
           Yalnızca tamamlanan siparişler değerlendirilebilir.
         </p>
         <button
-          onClick={() => navigate(`/customer/orders/${id}`)}
+          onClick={() => router.push(`/customer/orders/${id}`)}
           className="mt-4 text-sm font-semibold text-[#6C3BFF] underline"
         >
           Siparişe dön
@@ -87,7 +87,7 @@ export default function CustomerRate() {
         <h2 className="text-xl font-extrabold">Teşekkürler!</h2>
         <p className="text-sm text-gray-500">Değerlendirmeniz alındı.</p>
         <Button
-          onClick={() => navigate("/customer/orders")}
+          onClick={() => router.push("/customer/orders")}
           className="rounded-full bg-[#6C3BFF] font-bold text-white"
         >
           Siparişlerime dön
@@ -106,7 +106,7 @@ export default function CustomerRate() {
     <div className="gg-rise px-4 pb-24 pt-4" data-testid="customer-rate">
       <div className="mb-4 flex items-center gap-2">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => router.back()}
           className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm"
           data-testid="back-button"
         >

@@ -28,22 +28,24 @@ export function useActiveMerchants() {
 }
 
 /** Fetch single merchant by ID. */
-export function useMerchant(merchantId) {
+export function useMerchant(merchantId, options = {}) {
   return useQuery({
     queryKey: merchantKeys.detail(merchantId),
     queryFn: () => merchantsService.getMerchantById(merchantId),
     enabled: !!merchantId,
     staleTime: 3 * 60 * 1000,
+    initialData: options.initialData,
   });
 }
 
 /** Fetch merchant's products. */
-export function useMerchantProducts(merchantId) {
+export function useMerchantProducts(merchantId, options = {}) {
   return useQuery({
     queryKey: merchantKeys.products(merchantId),
     queryFn: () => merchantsService.getMerchantProducts(merchantId),
     enabled: !!merchantId,
     staleTime: 2 * 60 * 1000,
+    initialData: options.initialData,
   });
 }
 

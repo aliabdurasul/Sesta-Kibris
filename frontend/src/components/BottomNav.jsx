@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NavLink } from "@/lib/router-bridge";
 import { Home, Store, ClipboardList, User, Bike } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 
@@ -24,6 +24,7 @@ export default function BottomNav({ variant }) {
         ];
 
   const cols = items.length === 4 ? "grid-cols-4" : "grid-cols-3";
+  const isActive = (href, end) => end ? pathname === href : pathname.startsWith(href);
 
   return (
     <nav
@@ -32,12 +33,11 @@ export default function BottomNav({ variant }) {
     >
       <div className={`pointer-events-auto grid ${cols} gap-1 rounded-2xl border border-[#E5E7EB] bg-white/95 px-2 py-2 shadow-xl backdrop-blur`}>
         {items.map(({ to, label, icon: Icon, end }) => {
-          const active = end ? pathname === to : pathname.startsWith(to);
+          const active = isActive(to, end);
           return (
-            <NavLink
+            <Link
               key={to}
-              to={to}
-              end={end}
+              href={to}
               className="tap relative flex flex-col items-center justify-center rounded-xl py-2 text-xs font-semibold"
               style={{ color: active ? "#6C3BFF" : "#6B7280" }}
               data-testid={`nav-${label.toLowerCase()}`}
@@ -52,7 +52,7 @@ export default function BottomNav({ variant }) {
                   {cartCount}
                 </span>
               )}
-            </NavLink>
+            </Link>
           );
         })}
       </div>

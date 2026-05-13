@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { useNavigate } from "@/lib/router-bridge";
+import { useRouter } from "next/navigation";
 import { Search, MapPin, Store, Droplet, Flame, ArrowRight, ShieldCheck, Bike, LayoutDashboard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -10,16 +10,16 @@ const CATEGORIES = [
   { id: "gas", label: "Tüp Siparişi", icon: Flame, color: "text-orange-500", bg: "bg-orange-50" },
 ];
 
-export default function CustomerHome() {
-  const navigate = useNavigate();
+export default function CustomerHome({ initialMerchants }) {
+  const router = useRouter();
 
   const handleSearchClick = () => {
-    navigate("/markets");
+    router.push("/markets");
   };
 
   const handleCategoryClick = (id) => {
     // In a real app, you might pass the category via state or query param
-    navigate("/markets");
+    router.push("/markets");
   };
 
   return (
@@ -77,7 +77,7 @@ export default function CustomerHome() {
         {/* Featured Banner */}
         <div 
           className="tap mt-6 flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#00C2A8] to-[#00A38D] p-5 text-white shadow-sm"
-          onClick={() => navigate("/markets")}
+          onClick={() => router.push("/markets")}
         >
           <div>
             <h4 className="font-extrabold">Tüm Marketleri Gör</h4>
@@ -95,7 +95,7 @@ export default function CustomerHome() {
           </h3>
           <div className="grid grid-cols-3 gap-3">
             <button
-              onClick={() => navigate("/merchant")}
+              onClick={() => router.push("/merchant")}
               className="tap flex flex-col items-center justify-center gap-2 rounded-2xl border border-[#E5E7EB] bg-white py-4 shadow-sm"
               data-testid="enter-merchant"
             >
@@ -105,7 +105,7 @@ export default function CustomerHome() {
               <span className="text-xs font-bold text-gray-800">Merchant</span>
             </button>
             <button
-              onClick={() => navigate("/courier")}
+              onClick={() => router.push("/courier")}
               className="tap flex flex-col items-center justify-center gap-2 rounded-2xl border border-[#E5E7EB] bg-white py-4 shadow-sm"
               data-testid="enter-courier"
             >
@@ -115,7 +115,7 @@ export default function CustomerHome() {
               <span className="text-xs font-bold text-gray-800">Kurye</span>
             </button>
             <button
-              onClick={() => navigate("/admin")}
+              onClick={() => router.push("/admin")}
               className="tap flex flex-col items-center justify-center gap-2 rounded-2xl border border-[#E5E7EB] bg-white py-4 shadow-sm"
               data-testid="enter-admin"
             >

@@ -1,15 +1,16 @@
 "use client";
 import React from "react";
-import { useNavigate, useParams } from "@/lib/router-bridge";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Plus, Minus, Clock, ShoppingCart, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMerchant, useMerchantProducts } from "@/hooks/useMerchants";
 import { useCart } from "@/hooks/useCart";
 import { MERCHANT_TYPE_LABELS, formatPrice } from "@/lib/constants";
 
-export default function CustomerMerchant() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+export default function CustomerMerchant({ initialMerchant, initialProducts, merchantId }) {
+  const params = useParams();
+  const id = merchantId || params?.id;
+  const router = useRouter();
   const { addItem, decrementItem, cart, itemCount } = useCart();
 
   const {
@@ -17,13 +18,13 @@ export default function CustomerMerchant() {
     isLoading: merchantLoading,
     isError: merchantError,
     error: merchantErrObj,
-  } = useMerchant(id);
+  } = useMerchant(id, { initialData: initialMerchant });
   const {
     data: products = [],
     isLoading: productsLoading,
     isError: productsError,
     error: productsErrObj,
-  } = useMerchantProducts(id);
+  } = useMerchantProducts(id, { initialData: initialProducts });
 
   const isLoading = merchantLoading || productsLoading;
   const loadFailed = merchantError || productsError;
@@ -51,7 +52,7 @@ export default function CustomerMerchant() {
           </div>
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => router.back()}
             className="tap mt-4 text-sm font-semibold text-[#6C3BFF] underline"
           >
             Geri dön
@@ -90,7 +91,7 @@ export default function CustomerMerchant() {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         <button
-          onClick={() => navigate(-1)}
+            onClick={() => router.back()}
           className="tap absolute left-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/95 shadow-md"
           data-testid="back-button"
         >
@@ -208,7 +209,7 @@ export default function CustomerMerchant() {
       {cartItemCount > 0 && (
         <div className="fixed bottom-24 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4">
           <Button
-            onClick={() => navigate("/cart")}
+            onClick={() => router.push("/cart")}
             className="tap h-14 w-full rounded-full bg-[#6C3BFF] text-base font-bold hover:bg-[#582CD6]"
             data-testid="view-cart-button"
           >

@@ -4,6 +4,7 @@
 
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { generateSlug } from '../domain/merchants.rules';
+import { merchantCreateSchema, merchantUpdateSchema } from '../lib/validations';
 import type { Merchant, Product, Category } from '../types';
 
 export class MerchantError extends Error {
@@ -101,6 +102,10 @@ export async function createMerchant(params: {
   delivery_mode?: string;
   owner_user_id: string;
 }) {
+  const validated = merchantCreateSchema.safeParse(params);
+  if (!validated.success) {
+    throw new MerchantError(validated.error.issues.map(i => i.message).join('; '));
+  }
   const supabase = getClient();
   const slug = generateSlug(params.name) + '-' + Date.now().toString(36).slice(-4);
 

@@ -2,7 +2,7 @@
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "@/lib/router-bridge";
+import { useRouter } from "next/navigation";
 import { Bike, DollarSign, TrendingUp, Calendar, Power, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import * as couriersService from "@/services/couriers.service";

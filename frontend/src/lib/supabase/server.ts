@@ -16,17 +16,17 @@ export async function createSupabaseServerClient(): Promise<SupabaseClient | nul
     publicEnv.supabaseAnonKey,
     {
       cookies: {
-        get(name) {
+        get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        set(name, value, options) {
+        set(name: string, value: string, options: Record<string, unknown>) {
           try {
             cookieStore.set({ name, value, ...options });
           } catch (error) {
             // Ignore when called from read-only contexts.
           }
         },
-        remove(name, options) {
+        remove(name: string, options: Record<string, unknown>) {
           try {
             cookieStore.set({ name, value: "", ...options, maxAge: 0 });
           } catch (error) {

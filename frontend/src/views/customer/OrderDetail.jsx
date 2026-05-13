@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useNavigate, useParams } from "@/lib/router-bridge";
+import { useRouter, useParams } from "next/navigation";
 import OrderTimeline from "@/components/OrderTimeline";
 import LiveProgressStrip from "@/components/LiveProgressStrip";
 import StatusBadge from "@/components/StatusBadge";
@@ -18,7 +18,7 @@ import {
 
 export default function CustomerOrderDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const { data: order, isLoading } = useOrder(id);
   const { data: merchant } = useMerchant(order?.merchant_id);
@@ -43,7 +43,7 @@ export default function CustomerOrderDetail() {
     <div className="gg-rise px-4 pb-24 pt-4" data-testid="customer-order-detail">
       <div className="mb-4 flex items-center gap-2">
         <button
-          onClick={() => navigate("/customer/orders")}
+          onClick={() => router.push("/customer/orders")}
           className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm"
           data-testid="back-button"
         >

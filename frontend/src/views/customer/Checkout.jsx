@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { useNavigate } from "@/lib/router-bridge";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, MapPin, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { formatPrice } from "@/lib/constants";
 import { toast } from "sonner";
 
 function CheckoutInner() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { cart, clearCart, subtotal } = useCart();
   const { user } = useAuth();

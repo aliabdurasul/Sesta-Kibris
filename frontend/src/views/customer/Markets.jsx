@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useState } from "react";
-import { useNavigate } from "@/lib/router-bridge";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Search, Clock, Loader2, AlertCircle } from "lucide-react";
 import { useActiveMerchants } from "@/hooks/useMerchants";
@@ -13,12 +13,12 @@ const CHIPS = [
   { key: "gas", label: "Tüp" },
 ];
 
-export default function CustomerMarkets() {
-  const navigate = useNavigate();
+export default function CustomerMarkets({ initialMerchants }) {
+  const router = useRouter();
   const [chip, setChip] = useState("all");
   const [query, setQuery] = useState("");
 
-  const { data: merchants = [], isLoading, isError, error } = useActiveMerchants();
+  const { data: merchants = initialMerchants || [], isLoading, isError, error } = useActiveMerchants();
 
   const filtered = useMemo(() => {
     return merchants.filter((m) => {
@@ -109,7 +109,7 @@ export default function CustomerMarkets() {
           {filtered.map((m) => (
             <button
               key={m.id}
-              onClick={() => navigate(`/market/${m.id}`)}
+              onClick={() => router.push(`/market/${m.id}`)}
               className="tap flex w-full items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 text-left shadow-sm hover:shadow-md transition-shadow"
               data-testid={`merchant-card-${m.id}`}
             >

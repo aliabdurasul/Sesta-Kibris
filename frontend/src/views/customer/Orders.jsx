@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { useNavigate } from "@/lib/router-bridge";
+import { useRouter } from "next/navigation";
 import { ChevronRight, RefreshCw, Loader2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
@@ -10,7 +10,7 @@ import { formatPrice } from "@/lib/constants";
 import { ORDER_STATUS_LABELS } from "@/domain/orders.rules";
 
 export default function CustomerOrders() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
   const { data: orders = [], isLoading } = useCustomerOrders();
 
@@ -36,7 +36,7 @@ export default function CustomerOrders() {
           </div>
           <h2 className="mt-4 text-lg font-bold">Henüz siparişiniz yok</h2>
           <p className="mt-1 text-sm text-gray-500">İlk siparişinizi verin, burada görünsün.</p>
-          <Button onClick={() => navigate("/markets")} className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]" data-testid="empty-orders-browse">
+          <Button onClick={() => router.push("/markets")} className="tap mt-5 h-12 rounded-full bg-[#6C3BFF] px-6 font-bold hover:bg-[#582CD6]" data-testid="empty-orders-browse">
             Mağazalara göz at
           </Button>
         </div>
@@ -49,7 +49,7 @@ export default function CustomerOrders() {
               data-testid={`order-row-${o.id}`}
             >
               <button
-                onClick={() => navigate(`/customer/orders/${o.id}`)}
+                onClick={() => router.push(`/customer/orders/${o.id}`)}
                 className="tap flex w-full items-center gap-3 text-left"
               >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#6C3BFF]/10">

@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
+import { orderPlaceSchema } from '../lib/validations';
 import { canRoleTransition, canAssignCourier, isCourierEligible } from '../domain/orders.rules';
 import type { Order, OrderItem, OrderStatus, UserRole, CourierProfile } from '../types';
 
@@ -101,6 +102,10 @@ export async function placeOrder(params: {
   total: number;
   special_instructions: string | null;
 }) {
+  const validated = orderPlaceSchema.safeParse(params);
+  if (!validated.success) {
+    throw new OrderError(validated.error.issues.map(i => i.message).join('; '));
+  }
   const supabase = getClient();
   // Insert order
   const { data: order, error: orderError } = await supabase

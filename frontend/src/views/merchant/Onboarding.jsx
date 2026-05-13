@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useNavigate } from "@/lib/router-bridge";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMutation } from "@tanstack/react-query";
 import * as merchantsService from "@/services/merchants.service";
@@ -25,7 +25,7 @@ import {
   ArrowLeft,
   ArrowRight,
 } from "lucide-react";
-import { TYPE_LABELS, DELIVERY_MODE_LABELS } from "@/data/seed";
+import { MERCHANT_TYPE_LABELS as TYPE_LABELS, DELIVERY_MODE_LABELS } from "@/lib/constants";
 
 const STEPS = [
   { key: "business", label: "İşletme", icon: Store },
@@ -37,7 +37,7 @@ const STEPS = [
 ];
 
 export default function MerchantOnboarding() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user, profile, refreshUser } = useAuth();
   const [step, setStep] = useState(0);
   const [data, setData] = useState({
@@ -76,7 +76,7 @@ export default function MerchantOnboarding() {
     onSuccess: async () => {
       toast.success("Başvurunuz alındı! Admin onayı bekleniyor.");
       await refreshUser();
-      navigate("/merchant", { replace: true });
+      router.replace("/merchant");
     },
     onError: (e) => toast.error(`Başvuru hatası: ${e.message}`),
   });
@@ -96,7 +96,7 @@ export default function MerchantOnboarding() {
     >
       <div className="mb-6 flex items-center gap-2">
         <button
-          onClick={() => navigate("/merchant")}
+          onClick={() => router.push("/merchant")}
           className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm"
           data-testid="onboarding-back"
         >

@@ -90,7 +90,7 @@ function SideItem({ icon: Icon, label, active = false, onClick }) {
 }
 
 // ── Main component ────────────────────────────────────────────
-export default function AdminDashboard() {
+export default function AdminDashboard({ initialStats }) {
   const qc = useQueryClient();
   const [tab, setTab] = useState("orders");
   const [statusFilter, setStatusFilter] = useState("all");

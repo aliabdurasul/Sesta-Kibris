@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useNavigate } from "@/lib/router-bridge";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMutation } from "@tanstack/react-query";
 import * as couriersService from "@/services/couriers.service";
@@ -33,7 +33,7 @@ const STEPS = [
 ];
 
 export default function CourierOnboarding() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user, refreshUser } = useAuth();
   const [step, setStep] = useState(0);
   const [otpSent, setOtpSent] = useState(false);
@@ -74,7 +74,7 @@ export default function CourierOnboarding() {
     onSuccess: async () => {
       toast.success("Başvurunuz alındı! Onay bekleniyor.");
       await refreshUser();
-      navigate("/courier", { replace: true });
+      router.replace("/courier");
     },
     onError: (e) => toast.error(`Başvuru hatası: ${e.message}`),
   });
@@ -94,7 +94,7 @@ export default function CourierOnboarding() {
     >
       <div className="mb-6 flex items-center gap-2">
         <button
-          onClick={() => navigate("/courier")}
+          onClick={() => router.push("/courier")}
           className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm"
           data-testid="courier-onboarding-back"
         >
