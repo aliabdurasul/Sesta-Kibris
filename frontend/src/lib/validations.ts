@@ -45,6 +45,7 @@ export const productUpdateSchema = z.object({
 });
 
 export const orderPlaceSchema = z.object({
+  customer_id: z.string().uuid().nullish(),
   merchant_id: z.string().uuid(),
   address_id: z.string().uuid().nullish(),
   guest_name: z.string().max(120).nullish(),

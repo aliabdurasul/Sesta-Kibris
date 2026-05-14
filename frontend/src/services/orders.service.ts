@@ -106,58 +106,65 @@ export async function placeOrder(params: {
   if (!validated.success) {
     throw new OrderError(validated.error.issues.map(i => i.message).join('; '));
   }
+  const p = validated.data;
   const supabase = getClient();
   // Insert order
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .insert({
-      customer_id: params.customer_id,
-      merchant_id: params.merchant_id,
-      address_id: params.address_id,
-      guest_name: params.guest_name,
-      guest_phone: params.guest_phone,
-      guest_address: params.guest_address,
-      subtotal: params.subtotal,
-      delivery_fee: params.delivery_fee,
-      discount: params.discount,
-      promo_code: params.promo_code,
-      total: params.total,
-      special_instructions: params.special_instructions,
+      customer_id: p.customer_id ?? null,
+      merchant_id: p.merchant_id,
+      address_id: p.address_id ?? null,
+      guest_name: p.guest_name ?? null,
+      guest_phone: p.guest_phone ?? null,
+      guest_address: p.guest_address ?? null,
+      subtotal: p.subtotal,
+      delivery_fee: p.delivery_fee,
+      discount: p.discount,
+      promo_code: p.promo_code ?? null,
+      total: p.total,
+      special_instructions: p.special_instructions ?? null,
       status: 'PLACED',
     })
     .select()
     .single();
 
-  if (orderError) throw new OrderError(orderError.message);
+  if (orderError) {
+    console.error('[placeOrder] insert failed:', orderError);
+    throw new OrderError(orderError.message);
+  }
 
   // Insert order items
-  const items = params.items.map(item => ({
+  const items = p.items.map(item => ({
     order_id: order.id,
     product_id: item.product_id,
     product_name: item.product_name,
-    product_image_url: item.product_image_url,
+    product_image_url: item.product_image_url ?? null,
     quantity: item.quantity,
     unit_price: item.unit_price,
     total_price: item.total_price,
   }));
 
   const { error: itemsError } = await supabase.from('order_items').insert(items);
-  if (itemsError) throw new OrderError(itemsError.message);
+  if (itemsError) {
+    console.error('[placeOrder] order_items insert failed:', itemsError);
+    throw new OrderError(itemsError.message);
+  }
 
   // Create COD payment record
   const { error: payError } = await supabase.from('payments').insert({
     order_id: order.id,
     provider: 'cod',
     status: 'pending',
-    amount: params.total,
+    amount: p.total,
     currency: 'TRY',
   });
-  if (payError) console.error('Payment record creation failed:', payError.message);
+  if (payError) console.error('[placeOrder] payment record creation failed:', payError.message);
 
   // Emit event
   await emitEvent('order.placed', 'order', order.id, {
-    merchant_id: params.merchant_id,
-    total: params.total,
+    merchant_id: p.merchant_id,
+    total: p.total,
   });
 
   return order as Order;
