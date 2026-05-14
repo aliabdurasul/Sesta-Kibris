@@ -22,6 +22,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  // Track whether signIn() already loaded data to skip duplicate onAuthStateChange trigger
+  const [signInInProgress, setSignInInProgress] = useState(false);
 
   const loadUserData = useCallback(async (authUser, { silent = false } = {}) => {
     if (!authUser) {
@@ -73,6 +75,8 @@ export function AuthProvider({ children }) {
 
     const subscription = authService.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
+      // Skip if signIn() already handled this — prevents duplicate loadUserData
+      if (signInInProgress) return;
       if (event === "SIGNED_IN" && session?.user) {
         await loadUserData(session.user);
       } else if (event === "SIGNED_OUT") {
@@ -89,6 +93,7 @@ export function AuthProvider({ children }) {
   const signIn = useCallback(
     async (email, password) => {
       setError(null);
+      setSignInInProgress(true);
       try {
         const { user: authUser } = await authService.signIn(email, password);
         // loadUserData returns the fetched roles — use them directly,
@@ -105,6 +110,9 @@ export function AuthProvider({ children }) {
       } catch (err) {
         setError(err.message);
         throw err;
+      } finally {
+        // Allow future onAuthStateChange events (e.g. token refresh)
+        setSignInInProgress(false);
       }
     },
     [loadUserData],
