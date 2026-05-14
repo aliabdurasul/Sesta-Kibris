@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
       setProfile(null);
       setRoles([]);
       setMerchantMemberships([]);
-      return;
+      return [];
     }
 
     if (silent) setIsRefreshing(true);
@@ -43,8 +43,11 @@ export function AuthProvider({ children }) {
       setProfile(profileData);
       setRoles(rolesData);
       setMerchantMemberships(memberships);
+      // Return fetched roles so callers can act on them without a second DB round-trip
+      return rolesData;
     } catch (err) {
       console.error("Failed to load user data:", err);
+      return [];
     } finally {
       if (silent) setIsRefreshing(false);
     }
@@ -88,17 +91,17 @@ export function AuthProvider({ children }) {
       setError(null);
       try {
         const { user: authUser } = await authService.signIn(email, password);
-        await loadUserData(authUser);
-        // Return fresh roles so callers can redirect immediately without stale state
-        const freshRoles = await authService.getUserRoles(authUser.id);
-        const computedRole = freshRoles.includes("admin")
+        // loadUserData returns the fetched roles — use them directly,
+        // no second DB round-trip needed.
+        const loadedRoles = await loadUserData(authUser);
+        const primaryRole = loadedRoles.includes("admin")
           ? "admin"
-          : freshRoles.includes("merchant_owner") || freshRoles.includes("merchant_staff")
+          : loadedRoles.includes("merchant_owner") || loadedRoles.includes("merchant_staff")
             ? "merchant"
-            : freshRoles.includes("courier")
+            : loadedRoles.includes("courier")
               ? "courier"
               : "customer";
-        return { user: authUser, primaryRole: computedRole };
+        return { user: authUser, primaryRole };
       } catch (err) {
         setError(err.message);
         throw err;
