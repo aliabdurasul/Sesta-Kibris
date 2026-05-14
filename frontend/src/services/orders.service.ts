@@ -79,7 +79,12 @@ export async function getOrder(orderId: string) {
 
 // ─── Mutations ───────────────────────────────────────────────
 
-/** Place a new order. */
+/** Place a new order atomically via RPC.
+ *
+ * A single Postgres function (create_order_transaction) inserts
+ * orders + order_items + payments + event in one transaction.
+ * If any step fails the entire operation rolls back — no ghost orders.
+ */
 export async function placeOrder(params: {
   customer_id: string | null;
   merchant_id: string;
@@ -102,72 +107,37 @@ export async function placeOrder(params: {
   total: number;
   special_instructions: string | null;
 }) {
+  // Client-side validation before hitting the DB
   const validated = orderPlaceSchema.safeParse(params);
   if (!validated.success) {
     throw new OrderError(validated.error.issues.map(i => i.message).join('; '));
   }
   const p = validated.data;
+
   const supabase = getClient();
-  // Insert order
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert({
-      customer_id: p.customer_id ?? null,
-      merchant_id: p.merchant_id,
-      address_id: p.address_id ?? null,
-      guest_name: p.guest_name ?? null,
-      guest_phone: p.guest_phone ?? null,
-      guest_address: p.guest_address ?? null,
-      subtotal: p.subtotal,
-      delivery_fee: p.delivery_fee,
-      discount: p.discount,
-      promo_code: p.promo_code ?? null,
-      total: p.total,
-      special_instructions: p.special_instructions ?? null,
-      status: 'PLACED',
-    })
-    .select()
-    .single();
 
-  if (orderError) {
-    console.error('[placeOrder] insert failed:', orderError);
-    throw new OrderError(orderError.message);
-  }
-
-  // Insert order items
-  const items = p.items.map(item => ({
-    order_id: order.id,
-    product_id: item.product_id,
-    product_name: item.product_name,
-    product_image_url: item.product_image_url ?? null,
-    quantity: item.quantity,
-    unit_price: item.unit_price,
-    total_price: item.total_price,
-  }));
-
-  const { error: itemsError } = await supabase.from('order_items').insert(items);
-  if (itemsError) {
-    console.error('[placeOrder] order_items insert failed:', itemsError);
-    throw new OrderError(itemsError.message);
-  }
-
-  // Create COD payment record
-  const { error: payError } = await supabase.from('payments').insert({
-    order_id: order.id,
-    provider: 'cod',
-    status: 'pending',
-    amount: p.total,
-    currency: 'TRY',
-  });
-  if (payError) console.error('[placeOrder] payment record creation failed:', payError.message);
-
-  // Emit event
-  await emitEvent('order.placed', 'order', order.id, {
-    merchant_id: p.merchant_id,
-    total: p.total,
+  const { data, error } = await supabase.rpc('create_order_transaction', {
+    p_customer_id:          p.customer_id ?? null,
+    p_merchant_id:          p.merchant_id,
+    p_address_id:           p.address_id ?? null,
+    p_guest_name:           p.guest_name ?? null,
+    p_guest_phone:          p.guest_phone ?? null,
+    p_guest_address:        p.guest_address ?? null,
+    p_subtotal:             p.subtotal,
+    p_delivery_fee:         p.delivery_fee,
+    p_discount:             p.discount,
+    p_promo_code:           p.promo_code ?? null,
+    p_total:                p.total,
+    p_special_instructions: p.special_instructions ?? null,
+    p_items:                p.items,
   });
 
-  return order as Order;
+  if (error) {
+    console.error('[placeOrder] RPC create_order_transaction failed:', error);
+    throw new OrderError(error.message);
+  }
+
+  return data as Order;
 }
 
 /** Transition an order to a new status with role validation. */

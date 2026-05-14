@@ -65,7 +65,23 @@ export const orderPlaceSchema = z.object({
   promo_code: z.string().max(30).nullish(),
   total: z.number().positive(),
   special_instructions: z.string().max(500).nullish(),
-});
+}).refine(
+  (data) => {
+    // Guest orders (no auth user) must provide delivery contact details
+    if (!data.customer_id) {
+      return (
+        Boolean(data.guest_name?.trim()) &&
+        Boolean(data.guest_phone?.trim()) &&
+        Boolean(data.guest_address?.trim())
+      );
+    }
+    return true;
+  },
+  {
+    message: "guest_name, guest_phone, and guest_address are required for guest orders",
+    path: ["guest_name"],
+  },
+);
 
 export const addressSchema = z.object({
   label: z.string().min(1).max(50),
