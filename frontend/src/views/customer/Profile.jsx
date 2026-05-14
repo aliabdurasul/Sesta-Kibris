@@ -34,7 +34,10 @@ function newId() {
 
 export default function CustomerProfile() {
   const router = useRouter();
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, profile, roles, loading, signOut } = useAuth();
+
+  const isMerchant = roles.includes("merchant_owner") || roles.includes("merchant_staff");
+  const isCourier = roles.includes("courier");
 
   const [addresses, setAddresses] = useState([]);
   const [open, setOpen] = useState(false);
@@ -242,8 +245,10 @@ export default function CustomerProfile() {
         </div>
       </div>
 
-      {/* Onboarding CTAs */}
+      {/* Onboarding CTAs — only show for roles user doesn't have */}
+      {(!isMerchant || !isCourier) && (
       <div className="mt-4 grid grid-cols-2 gap-2">
+        {!isMerchant && (
         <Button
           onClick={() => router.push("/merchant/onboarding")}
           variant="outline"
@@ -252,6 +257,8 @@ export default function CustomerProfile() {
         >
           Mağaza ol
         </Button>
+        )}
+        {!isCourier && (
         <Button
           onClick={() => router.push("/courier/onboarding")}
           variant="outline"
@@ -260,7 +267,9 @@ export default function CustomerProfile() {
         >
           Kurye ol
         </Button>
+        )}
       </div>
+      )}
 
       {/* Sign out */}
       <Button

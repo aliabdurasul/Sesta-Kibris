@@ -19,11 +19,12 @@ export const merchantKeys = {
 // ─── Queries ─────────────────────────────────────────────────
 
 /** Fetch all active merchants (customer home). */
-export function useActiveMerchants() {
+export function useActiveMerchants(options = {}) {
   return useQuery({
     queryKey: merchantKeys.active(),
     queryFn: merchantsService.getActiveMerchants,
-    staleTime: 5 * 60 * 1000, // 5 min
+    staleTime: 5 * 60 * 1000,
+    initialData: options.initialData,
   });
 }
 

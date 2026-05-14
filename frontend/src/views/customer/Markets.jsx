@@ -18,7 +18,9 @@ export default function CustomerMarkets({ initialMerchants }) {
   const [chip, setChip] = useState("all");
   const [query, setQuery] = useState("");
 
-  const { data: merchants = initialMerchants || [], isLoading, isError, error } = useActiveMerchants();
+  const { data: merchants = [], isLoading, isError, error } = useActiveMerchants({
+    initialData: initialMerchants,
+  });
 
   const filtered = useMemo(() => {
     return merchants.filter((m) => {

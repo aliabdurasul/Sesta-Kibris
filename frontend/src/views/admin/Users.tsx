@@ -83,7 +83,7 @@ export default function AdminUsers() {
           <Users className="h-6 w-6 text-[#6C3BFF]" />
           <h1 className="text-2xl font-extrabold text-[#1A1A1A]">Kullanıcılar</h1>
         </div>
-        <Badge className="bg-[#F3F0FF] text-[#6C3BFF] font-bold">
+        <Badge variant="secondary" className="bg-[#F3F0FF] text-[#6C3BFF] font-bold">
           {users.length} kullanıcı
         </Badge>
       </div>
@@ -93,7 +93,7 @@ export default function AdminUsers() {
         <Input
           placeholder="E-posta veya isim ara..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
           className="pl-9 rounded-xl"
         />
       </div>

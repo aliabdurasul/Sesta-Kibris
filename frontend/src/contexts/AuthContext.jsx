@@ -89,7 +89,16 @@ export function AuthProvider({ children }) {
       try {
         const { user: authUser } = await authService.signIn(email, password);
         await loadUserData(authUser);
-        return authUser;
+        // Return fresh roles so callers can redirect immediately without stale state
+        const freshRoles = await authService.getUserRoles(authUser.id);
+        const computedRole = freshRoles.includes("admin")
+          ? "admin"
+          : freshRoles.includes("merchant_owner") || freshRoles.includes("merchant_staff")
+            ? "merchant"
+            : freshRoles.includes("courier")
+              ? "courier"
+              : "customer";
+        return { user: authUser, primaryRole: computedRole };
       } catch (err) {
         setError(err.message);
         throw err;

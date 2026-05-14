@@ -30,7 +30,7 @@ function CheckoutInner() {
   const [addressNotes, setAddressNotes] = useState("");
 
   if (cart.items.length === 0) {
-    navigate("/cart", { replace: true });
+    router.replace("/cart");
     return null;
   }
 
@@ -68,7 +68,7 @@ function CheckoutInner() {
       });
 
       clearCart();
-      navigate(`/order-success/${order.id}`, { replace: true });
+      router.replace(`/order-success/${order.id}`);
     } catch (err) {
       toast.error(err.message || "Sipariş verilemedi");
     }
@@ -77,7 +77,7 @@ function CheckoutInner() {
   return (
     <div className="gg-rise px-4 pb-40 pt-4" data-testid="customer-checkout">
       <div className="mb-4 flex items-center gap-2">
-        <button onClick={() => navigate(-1)} className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm">
+        <button onClick={() => router.back()} className="tap grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="text-xl font-extrabold">Siparişi Tamamla</h1>

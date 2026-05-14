@@ -25,6 +25,23 @@ const getClient = () => {
 /** Approve a merchant (set is_active = true). */
 export async function approveMerchant(merchantId: string) {
   const supabase = getClient();
+
+  // Find the merchant owner to ensure their role is active
+  const { data: merchantUser } = await supabase
+    .from('merchant_users')
+    .select('user_id')
+    .eq('merchant_id', merchantId)
+    .eq('role', 'owner')
+    .single();
+
+  if (merchantUser) {
+    await supabase.from('user_roles').upsert({
+      user_id: merchantUser.user_id,
+      role: 'merchant_owner',
+      is_active: true,
+    }, { onConflict: 'user_id,role' });
+  }
+
   const { data, error } = await supabase.from('merchants')
     .update({ is_active: true }).eq('id', merchantId).select().single();
   if (error) throw new AdminError(error.message);
@@ -43,6 +60,22 @@ export async function suspendMerchant(merchantId: string) {
 /** Approve a courier. */
 export async function approveCourier(courierId: string) {
   const supabase = getClient();
+
+  // Get the courier's user_id to ensure their role is active
+  const { data: courierProfile } = await supabase
+    .from('courier_profiles')
+    .select('user_id')
+    .eq('id', courierId)
+    .single();
+
+  if (courierProfile) {
+    await supabase.from('user_roles').upsert({
+      user_id: courierProfile.user_id,
+      role: 'courier',
+      is_active: true,
+    }, { onConflict: 'user_id,role' });
+  }
+
   const { data, error } = await supabase.from('courier_profiles')
     .update({ is_approved: true }).eq('id', courierId).select().single();
   if (error) throw new AdminError(error.message);

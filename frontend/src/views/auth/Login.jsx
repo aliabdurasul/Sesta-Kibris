@@ -22,7 +22,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn, primaryRole } = useAuth();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,20 +33,18 @@ function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      await signIn(email.trim(), password);
+      const { primaryRole: freshRole } = await signIn(email.trim(), password);
       const next = searchParams.get("next");
       if (next && next.startsWith("/") && !next.startsWith("//")) {
         router.replace(next);
       } else {
-        // Role-based redirect: middleware will have set ?next for protected routes,
-        // but for direct /login visits, route to the user's primary dashboard.
         const roleRedirects = {
           admin: "/admin",
           merchant: "/merchant",
           courier: "/courier",
           customer: "/",
         };
-        router.replace(roleRedirects[primaryRole] || "/");
+        router.replace(roleRedirects[freshRole] || "/");
       }
     } catch (err) {
       setError(err.message || "Giriş başarısız. Lütfen tekrar deneyin.");
